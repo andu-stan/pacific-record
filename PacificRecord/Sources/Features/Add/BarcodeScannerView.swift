@@ -25,7 +25,12 @@ struct BarcodeScannerView: UIViewControllerRepresentable {
 
     func updateUIViewController(_ scanner: DataScannerViewController, context: Context) {
         try? scanner.startScanning()
-        setTorch(on: isTorchOn)
+        // Only touch the capture device when the torch state actually changes —
+        // poking AVCaptureDevice on every update fights the scanner's own session.
+        if context.coordinator.torchOn != isTorchOn {
+            context.coordinator.torchOn = isTorchOn
+            setTorch(on: isTorchOn)
+        }
     }
 
     static func dismantleUIViewController(_ scanner: DataScannerViewController, coordinator: Coordinator) {
@@ -49,6 +54,7 @@ struct BarcodeScannerView: UIViewControllerRepresentable {
 
     final class Coordinator: NSObject, DataScannerViewControllerDelegate {
         private let onScan: (String) -> Void
+        var torchOn = false
 
         init(onScan: @escaping (String) -> Void) {
             self.onScan = onScan
