@@ -13,14 +13,17 @@ enum LibraryLayout {
 @Observable
 final class LibraryModel {
     private let store: LibraryStore
+    /// Folder holding the database and the `Covers/` directory.
+    let libraryFolder: URL
 
     var records: [Release] = []
     var searchText: String = ""
     var sort: LibraryStore.SortOrder = .artist
     var layout: LibraryLayout = .grid
 
-    init(store: LibraryStore) {
+    init(store: LibraryStore, libraryFolder: URL) {
         self.store = store
+        self.libraryFolder = libraryFolder
         reload()
     }
 

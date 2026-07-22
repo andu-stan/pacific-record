@@ -93,14 +93,7 @@ struct LibraryView: View {
             }
         }
         .sheet(item: $activeAdd) { choice in
-            NavigationStack {
-                switch choice {
-                case .manual: RecordFormView(mode: .new, onComplete: { activeAdd = nil })
-                case .search: TextSearchView(onComplete: { activeAdd = nil })
-                case .scan: ScannerView(onComplete: { activeAdd = nil })
-                }
-            }
-            .tint(Palette.tint)
+            AddFlowContainer(choice: choice, library: model, onFinish: { activeAdd = nil })
         }
         .sheet(isPresented: $showSettings) {
             NavigationStack { SettingsView() }.tint(Palette.tint)
@@ -175,7 +168,7 @@ struct LibraryGrid: View {
             ForEach(records) { release in
                 NavigationLink(value: release.id) {
                     VStack(alignment: .leading, spacing: 6) {
-                        CoverArtView(seed: release.coverSeed)
+                        CoverArtView(seed: release.coverSeed, coverPath: release.coverPath)
                             .aspectRatio(1, contentMode: .fit)
                             .shadow(color: .black.opacity(0.5), radius: 7, y: 4)
                         Text(release.title)
@@ -217,7 +210,7 @@ struct LibraryRow: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 13) {
-                CoverArtView(seed: release.coverSeed, cornerRadius: 6)
+                CoverArtView(seed: release.coverSeed, coverPath: release.coverPath, cornerRadius: 6)
                     .frame(width: 52, height: 52)
                     .shadow(color: .black.opacity(0.5), radius: 4, y: 2)
                 VStack(alignment: .leading, spacing: 2) {

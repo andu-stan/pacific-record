@@ -110,7 +110,7 @@ struct RecordFormView: View {
 
     private var coverHeader: some View {
         HStack(spacing: 16) {
-            CoverArtView(seed: title.isEmpty ? artist : title, cornerRadius: 10)
+            CoverArtView(seed: title.isEmpty ? artist : title, coverPath: mode.initialDetail?.release.coverPath, cornerRadius: 10)
                 .frame(width: 88, height: 88)
                 .shadow(color: .black.opacity(0.5), radius: 8, y: 6)
             VStack(alignment: .leading, spacing: 2) {
@@ -285,7 +285,9 @@ struct RecordFormView: View {
 
     private func save() {
         let base = mode.initialDetail
-        let recordID = mode.editingID ?? UUID().uuidString
+        // Reuse the existing/draft id (so a downloaded cover file still matches);
+        // a brand-new manual record gets a fresh id.
+        let recordID = base?.release.id ?? UUID().uuidString
         let genre = tags.first
         let styles = Array(tags.dropFirst())
         let release = Release(

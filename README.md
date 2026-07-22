@@ -58,10 +58,15 @@ To build/verify just the core from the command line: `cd VinylCore && swift test
   full-text search), the Discogs/MusicBrainz metadata clients, and unit tests.
 - **`PacificRecord`** — the SwiftUI app implementing the design: a design-system
   layer (SF Pro type scale + adaptive light/dark palette), the Library
-  (grid / list / empty), Record detail, the add flow (chooser → scanner →
-  match → form), Settings, and first-run onboarding, all wired to `VinylCore`
-  and seeded with a sample library. Fonts are **SF Pro only** (the system
-  font); icons use SF Symbols.
+  (grid / list / empty), Record detail, the add flow, Settings, and first-run
+  onboarding. Fonts are **SF Pro only** (the system font); icons use SF Symbols.
+  - **Live barcode scanning** via VisionKit `DataScannerViewController` (with a
+    type-a-barcode fallback in the Simulator, which has no camera).
+  - **Real metadata lookups** — barcode/text searches hit Discogs (using the
+    token from Settings) with MusicBrainz as fallback; the chosen pressing is
+    enriched, its cover downloaded to the library folder, and the form is
+    prefilled for you to add condition/rating before saving.
+  - The library **starts empty** — no seeded sample data.
 
 See the roadmap in [`docs/PLAN.md`](docs/PLAN.md).
 

@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// A gradient "cover" used as a placeholder until real artwork is downloaded.
 /// The seeded sample records reproduce the exact gradients from the design;
@@ -70,20 +71,62 @@ enum CoverGradient {
     }
 }
 
-/// Square-ish gradient cover with the subtle top-left sheen used across the design.
+/// The subtle top-left sheen used on every cover.
+private var coverSheen: some View {
+    LinearGradient(
+        colors: [.white.opacity(0.16), .clear],
+        startPoint: .topLeading,
+        endPoint: UnitPoint(x: 0.42, y: 0.42)
+    )
+}
+
+/// A record's cover: the downloaded image if present on disk, otherwise a
+/// deterministic gradient placeholder.
 struct CoverArtView: View {
     let seed: String
+    var coverPath: String? = nil
     var cornerRadius: CGFloat = Metrics.tileRadius
 
+    @Environment(\.libraryFolderURL) private var libraryFolder
+
     var body: some View {
-        CoverGradient.style(for: seed).view
-            .overlay(
-                LinearGradient(
-                    colors: [.white.opacity(0.16), .clear],
-                    startPoint: .topLeading,
-                    endPoint: UnitPoint(x: 0.42, y: 0.42)
-                )
-            )
-            .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+        Group {
+            if let image = localImage {
+                Image(uiImage: image).resizable().scaledToFill()
+            } else {
+                CoverGradient.style(for: seed).view.overlay(coverSheen)
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+    }
+
+    private var localImage: UIImage? {
+        guard let coverPath, let libraryFolder else { return nil }
+        return UIImage(contentsOfFile: libraryFolder.appendingPathComponent(coverPath).path)
+    }
+}
+
+/// A cover loaded from a remote URL (search/match results), with a gradient
+/// placeholder while loading or on failure.
+struct RemoteCoverView: View {
+    let url: URL?
+    let seed: String
+    var cornerRadius: CGFloat = 6
+
+    var body: some View {
+        Group {
+            if let url {
+                AsyncImage(url: url) { phase in
+                    if let image = phase.image {
+                        image.resizable().scaledToFill()
+                    } else {
+                        CoverGradient.style(for: seed).view.overlay(coverSheen)
+                    }
+                }
+            } else {
+                CoverGradient.style(for: seed).view.overlay(coverSheen)
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
     }
 }

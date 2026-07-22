@@ -1,4 +1,5 @@
 import SwiftUI
+import VisionKit
 import VinylCore
 
 // MARK: - Routing
@@ -6,53 +7,6 @@ import VinylCore
 enum AddChoice: Int, Identifiable {
     case scan, search, manual
     var id: Int { rawValue }
-}
-
-/// Navigation targets shared within an add flow's NavigationStack.
-enum AddRoute: Hashable {
-    case match
-    case candidate(PressingCandidate)
-    case manual
-}
-
-/// A candidate pressing shown on the match / search screens.
-struct PressingCandidate: Hashable, Identifiable {
-    var id = UUID()
-    var title: String
-    var artist: String
-    var label: String
-    var catalogNumber: String
-    var year: Int
-    var country: String
-    var format: String
-
-    func recordDetail() -> RecordDetail {
-        let recordID = UUID().uuidString
-        let release = Release(
-            id: recordID,
-            title: title,
-            artistDisplay: artist,
-            year: year,
-            country: country,
-            format: format.components(separatedBy: ",").first,
-            speed: "33⅓"
-        )
-        return RecordDetail(
-            release: release,
-            artists: [Artist(id: UUID().uuidString, name: artist)],
-            labels: [LabelCredit(name: label, catalogNumber: catalogNumber)],
-            tracks: []
-        )
-    }
-
-    /// The candidate pressings from the design (A Love Supreme).
-    static let sample: [PressingCandidate] = [
-        .init(title: "A Love Supreme", artist: "John Coltrane", label: "Impulse!", catalogNumber: "A-77", year: 1965, country: "US", format: "LP, Mono"),
-        .init(title: "A Love Supreme", artist: "John Coltrane", label: "Impulse!", catalogNumber: "AS-77", year: 1965, country: "US", format: "LP, Stereo"),
-        .init(title: "A Love Supreme", artist: "John Coltrane", label: "Impulse! / Analogue Prod.", catalogNumber: "AAPJ 077", year: 2010, country: "US", format: "2×LP, 45 RPM, 180g"),
-        .init(title: "A Love Supreme", artist: "John Coltrane", label: "HMV Pop", catalogNumber: "CLP 1869", year: 1965, country: "UK", format: "LP, Mono"),
-        .init(title: "A Love Supreme", artist: "John Coltrane", label: "Impulse! / Verve", catalogNumber: "602547976598", year: 2016, country: "Europe", format: "LP, 180g"),
-    ]
 }
 
 // MARK: - Chooser sheet
@@ -132,120 +86,196 @@ struct AddEntrySheet: View {
     }
 }
 
-// MARK: - Scanner
+// MARK: - Flow container
 
-struct ScannerView: View {
-    var onComplete: () -> Void
-    @Environment(\.dismiss) private var dismiss
+struct AddFlowContainer: View {
+    let choice: AddChoice
+    @State private var model: AddFlowModel
+
+    init(choice: AddChoice, library: LibraryModel, onFinish: @escaping () -> Void) {
+        self.choice = choice
+        _model = State(initialValue: AddFlowModel(library: library, onFinish: onFinish))
+    }
 
     var body: some View {
-        ScannerSurface(onClose: { dismiss() })
-            .navigationBarHidden(true)
-            .navigationDestination(for: AddRoute.self) { route in
-                switch route {
-                case .match:
-                    MatchView(onComplete: onComplete)
-                case let .candidate(candidate):
-                    RecordFormView(mode: .prefilled(candidate.recordDetail()), onComplete: onComplete)
-                case .manual:
-                    RecordFormView(mode: .new, onComplete: onComplete)
+        @Bindable var model = model
+        NavigationStack(path: $model.path) {
+            root
+                .navigationDestination(for: AddFlowModel.Step.self) { step in
+                    switch step {
+                    case .matches:
+                        MatchView(model: model)
+                    case .form:
+                        RecordFormView(mode: .prefilled(model.formDraft), onComplete: model.onComplete)
+                    }
                 }
+        }
+        .tint(Palette.tint)
+        .overlay {
+            if model.phase == .searching {
+                SearchingOverlay(barcode: model.lastBarcode)
             }
+        }
+        .alert("No match found", isPresented: emptyAlert) {
+            Button("Enter manually") { model.goManual() }
+            Button(model.lastBarcode == nil ? "Try again" : "Scan again", role: .cancel) { model.dismissAlert() }
+        } message: {
+            Text("We couldn't find a release. It may be a promo or a private pressing.")
+        }
+        .alert("Lookup failed", isPresented: failedAlert) {
+            Button("Try again") { model.retry() }
+            Button("Enter manually") { model.goManual() }
+            Button("Cancel", role: .cancel) { model.finish() }
+        } message: {
+            Text(failedMessage)
+        }
+    }
+
+    @ViewBuilder private var root: some View {
+        switch choice {
+        case .manual: RecordFormView(mode: .new, onComplete: model.onComplete)
+        case .scan: ScannerView(model: model)
+        case .search: TextSearchView(model: model)
+        }
+    }
+
+    private var emptyAlert: Binding<Bool> {
+        Binding(get: { model.phase == .empty }, set: { if !$0 { model.dismissAlert() } })
+    }
+
+    private var failedAlert: Binding<Bool> {
+        Binding(get: { if case .failed = model.phase { return true } else { return false } },
+                set: { if !$0 { model.dismissAlert() } })
+    }
+
+    private var failedMessage: String {
+        if case let .failed(message) = model.phase { return message }
+        return ""
     }
 }
 
-/// The camera-scanner UI. Live capture (VisionKit) is wired on device in a
-/// later milestone; here the frame is tappable to simulate a detected barcode.
-private struct ScannerSurface: View {
-    var onClose: () -> Void
+struct SearchingOverlay: View {
+    var barcode: String?
 
     var body: some View {
         ZStack {
-            RadialGradient(colors: [Color(hex: 0x2A2622), Color(hex: 0x0A0A0A)],
-                           center: UnitPoint(x: 0.5, y: 0.45), startRadius: 20, endRadius: 460)
-                .ignoresSafeArea()
-
-            VStack {
-                HStack {
-                    Button(action: onClose) {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 15, weight: .bold))
-                            .foregroundStyle(.white)
-                            .frame(width: 34, height: 34)
-                            .background(Color.black.opacity(0.5), in: Circle())
-                    }
-                    .buttonStyle(.plain)
-                    Spacer()
+            Color.black.opacity(0.55).ignoresSafeArea()
+            VStack(spacing: 16) {
+                ProgressView().controlSize(.large).tint(.white)
+                Text("Looking up release…").font(.prSection).foregroundStyle(.white)
+                if let barcode {
+                    Text("Barcode \(barcode)").font(.prSmall).foregroundStyle(.white.opacity(0.7))
                 }
-                .padding(.horizontal, 20)
-                Text("Scan barcode")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .padding(.top, 4)
-                Spacer()
             }
-            .padding(.top, 16)
+            .padding(28)
+            .background(Color(hex: 0x1C1C1E), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        }
+    }
+}
 
-            VStack(spacing: 22) {
-                NavigationLink(value: AddRoute.match) {
-                    reticle
-                }
-                .buttonStyle(.plain)
+// MARK: - Scanner
 
-                Text("Line up the barcode on the back cover")
-                    .font(.prBody)
-                    .foregroundStyle(.white.opacity(0.8))
-                Text("Tap the frame to simulate a scan")
-                    .font(.prSmall)
-                    .foregroundStyle(.white.opacity(0.4))
-            }
+struct ScannerView: View {
+    @Bindable var model: AddFlowModel
+    @Environment(\.dismiss) private var dismiss
+    @State private var torchOn = false
+    @State private var typedBarcode = ""
 
-            VStack {
-                Spacer()
-                HStack(spacing: 60) {
-                    circleButton(icon: "bolt.fill", label: "Torch")
-                    NavigationLink(value: AddRoute.manual) {
-                        VStack(spacing: 6) {
-                            Image(systemName: "square.and.pencil")
-                                .font(.system(size: 22))
-                                .foregroundStyle(.white)
-                                .frame(width: 56, height: 56)
-                                .background(Color.white.opacity(0.15), in: Circle())
-                            Text("Enter manually").font(.prSmall).foregroundStyle(.white)
-                        }
-                    }
-                    .buttonStyle(.plain)
-                }
-                .padding(.bottom, 64)
+    var body: some View {
+        ZStack {
+            if DataScannerViewController.isSupported {
+                BarcodeScannerView(isTorchOn: torchOn) { model.handleBarcode($0) }
+                    .ignoresSafeArea()
+                cameraOverlay
+            } else {
+                unavailable
             }
         }
-        .background(Color.black.ignoresSafeArea())
+        .toolbar(.hidden, for: .navigationBar)
     }
 
-    private var reticle: some View {
-        let barWidths: [CGFloat] = [2, 1, 3, 1, 2, 4, 1, 2, 3, 1, 2]
-        return ZStack {
+    private var cameraOverlay: some View {
+        VStack {
+            HStack {
+                closeButton
+                Spacer()
+                Text("Scan barcode").font(.system(size: 18, weight: .semibold)).foregroundStyle(.white)
+                Spacer()
+                Color.clear.frame(width: 34, height: 34)
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 12)
+
+            Spacer()
             RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .stroke(Palette.accent, lineWidth: 3)
                 .frame(width: 280, height: 170)
-            Rectangle()
-                .fill(Palette.accent)
-                .frame(width: 232, height: 2)
-                .shadow(color: Palette.accent.opacity(0.7), radius: 6)
-            HStack(spacing: 6) {
-                ForEach(Array(barWidths.enumerated()), id: \.offset) { pair in
-                    Rectangle().fill(Color.white.opacity(0.5))
-                        .frame(width: pair.element, height: 44)
+            Text("Line up the barcode on the back cover")
+                .font(.prBody).foregroundStyle(.white.opacity(0.85))
+                .padding(.top, 20)
+            Spacer()
+
+            HStack(spacing: 60) {
+                Button { torchOn.toggle() } label: {
+                    scannerButton(icon: torchOn ? "bolt.fill" : "bolt.slash.fill", label: "Torch")
                 }
+                .buttonStyle(.plain)
+                Button { model.goManual() } label: {
+                    scannerButton(icon: "square.and.pencil", label: "Enter manually")
+                }
+                .buttonStyle(.plain)
             }
+            .padding(.bottom, 60)
         }
     }
 
-    private func circleButton(icon: String, label: String) -> some View {
+    private var unavailable: some View {
+        VStack(spacing: 0) {
+            HStack { closeButton; Spacer() }
+                .padding(.horizontal, 20).padding(.top, 12)
+            Spacer()
+            Image(systemName: "barcode.viewfinder")
+                .font(.system(size: 52)).foregroundStyle(Palette.secondary)
+                .padding(.bottom, 20)
+            Text("Camera scanning needs a device")
+                .font(.prTitle2).foregroundStyle(Palette.label).padding(.bottom, 8)
+            Text("The Simulator has no camera. Enter a barcode to test the lookup, or add the record manually.")
+                .font(.prBody).foregroundStyle(Palette.secondary)
+                .multilineTextAlignment(.center).padding(.bottom, 24)
+            HStack(spacing: 8) {
+                Image(systemName: "barcode").foregroundStyle(Palette.tertiary)
+                TextField("Barcode digits", text: $typedBarcode)
+                    .keyboardType(.numberPad).font(.prBody).foregroundStyle(Palette.label)
+            }
+            .padding(.horizontal, 12).padding(.vertical, 12)
+            .background(Palette.controlFill, in: RoundedRectangle(cornerRadius: 11, style: .continuous))
+            .padding(.bottom, 14)
+            PrimaryButton(title: "Look up") { model.handleBarcode(typedBarcode) }
+                .padding(.bottom, 12)
+            SecondaryButton(title: "Enter manually") { model.goManual() }
+            Spacer()
+        }
+        .padding(.horizontal, 28)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Palette.background)
+    }
+
+    private var closeButton: some View {
+        let overCamera = DataScannerViewController.isSupported
+        return Button { dismiss() } label: {
+            Image(systemName: "xmark")
+                .font(.system(size: 15, weight: .bold))
+                .foregroundStyle(overCamera ? Color.white : Palette.label)
+                .frame(width: 34, height: 34)
+                .background(overCamera ? Color.black.opacity(0.5) : Palette.grouped, in: Circle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func scannerButton(icon: String, label: String) -> some View {
         VStack(spacing: 6) {
             Image(systemName: icon)
-                .font(.system(size: 22))
-                .foregroundStyle(.white)
+                .font(.system(size: 22)).foregroundStyle(.white)
                 .frame(width: 56, height: 56)
                 .background(Color.white.opacity(0.15), in: Circle())
             Text(label).font(.prSmall).foregroundStyle(.white)
@@ -256,52 +286,31 @@ private struct ScannerSurface: View {
 // MARK: - Match / confirm
 
 struct MatchView: View {
-    var onComplete: () -> Void
-    private let candidates = PressingCandidate.sample
+    @Bindable var model: AddFlowModel
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                HStack(spacing: 10) {
-                    Image(systemName: "barcode")
-                        .font(.system(size: 17))
-                        .foregroundStyle(Palette.badgeAmberText)
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text("602547976598")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(Palette.badgeAmberText)
-                        Text("\(candidates.count) pressings match this barcode")
-                            .font(.prSmall)
-                            .foregroundStyle(Palette.secondary)
-                    }
-                    Spacer()
+                if let barcode = model.lastBarcode {
+                    barcodeBanner(barcode)
                 }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 11)
-                .background(Palette.badgeAmberFill, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Palette.accent.opacity(0.3)))
-                .padding(.bottom, 14)
-
-                Text("A LOVE SUPREME · JOHN COLTRANE")
-                    .font(.system(size: 13, weight: .semibold))
-                    .tracking(0.4)
-                    .foregroundStyle(Palette.tertiary)
-                    .padding(.horizontal, 2)
-                    .padding(.bottom, 4)
-
-                ForEach(candidates) { candidate in
-                    NavigationLink(value: AddRoute.candidate(candidate)) {
-                        CandidateRow(candidate: candidate)
-                    }
-                    .buttonStyle(.plain)
+                if let first = model.matches.first {
+                    Text("\(first.title.uppercased()) · \(first.artistDisplay.uppercased())")
+                        .font(.system(size: 13, weight: .semibold))
+                        .tracking(0.4)
+                        .foregroundStyle(Palette.tertiary)
+                        .lineLimit(1)
+                        .padding(.horizontal, 2)
+                        .padding(.bottom, 4)
                 }
-
-                NavigationLink(value: AddRoute.manual) {
+                ForEach(model.matches) { match in
+                    Button { model.choose(match) } label: { CandidateRow(match: match) }
+                        .buttonStyle(.plain)
+                }
+                Button { model.goManual() } label: {
                     Text("None of these — enter manually")
-                        .font(.prHeadline)
-                        .foregroundStyle(Palette.tint)
-                        .frame(maxWidth: .infinity)
-                        .padding(20)
+                        .font(.prHeadline).foregroundStyle(Palette.tint)
+                        .frame(maxWidth: .infinity).padding(20)
                 }
                 .buttonStyle(.plain)
             }
@@ -311,26 +320,39 @@ struct MatchView: View {
         .navigationTitle("Choose pressing")
         .navigationBarTitleDisplayMode(.inline)
     }
+
+    private func barcodeBanner(_ code: String) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: "barcode").font(.system(size: 17)).foregroundStyle(Palette.badgeAmberText)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(code).font(.system(size: 14, weight: .semibold)).foregroundStyle(Palette.badgeAmberText)
+                Text(model.matches.count == 1 ? "1 pressing matches this barcode"
+                                              : "\(model.matches.count) pressings match this barcode")
+                    .font(.prSmall).foregroundStyle(Palette.secondary)
+            }
+            Spacer()
+        }
+        .padding(.horizontal, 14).padding(.vertical, 11)
+        .background(Palette.badgeAmberFill, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Palette.accent.opacity(0.3)))
+        .padding(.bottom, 14)
+    }
 }
 
 struct CandidateRow: View {
-    let candidate: PressingCandidate
+    let match: MetadataMatch
 
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 12) {
-                CoverArtView(seed: candidate.title, cornerRadius: 6)
+                RemoteCoverView(url: match.coverImageURL, seed: match.title)
                     .frame(width: 56, height: 56)
                     .shadow(color: .black.opacity(0.5), radius: 4, y: 2)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("\(candidate.label) · \(candidate.catalogNumber)")
-                        .font(.prBodyEmphasis)
-                        .foregroundStyle(Palette.label)
-                        .lineLimit(1)
-                    Text("\(candidate.year) · \(candidate.country) · \(candidate.format)")
-                        .font(.prSmall)
-                        .foregroundStyle(Palette.secondary)
-                        .lineLimit(1)
+                    Text(titleLine)
+                        .font(.prBodyEmphasis).foregroundStyle(Palette.label).lineLimit(1)
+                    Text(detailLine)
+                        .font(.prSmall).foregroundStyle(Palette.secondary).lineLimit(1)
                 }
                 Spacer(minLength: 8)
                 Image(systemName: "chevron.right")
@@ -341,18 +363,26 @@ struct CandidateRow: View {
             HRule()
         }
     }
+
+    private var titleLine: String {
+        let label = match.labels.first?.name ?? match.artistDisplay
+        if let catalog = match.primaryCatalogNumber { return "\(label) · \(catalog)" }
+        return label
+    }
+
+    private var detailLine: String {
+        [match.year.map(String.init), match.country, match.format]
+            .compactMap { $0 }
+            .joined(separator: " · ")
+    }
 }
 
 // MARK: - Text search
 
 struct TextSearchView: View {
-    var onComplete: () -> Void
-    @State private var query = ""
+    @Bindable var model: AddFlowModel
     @Environment(\.dismiss) private var dismiss
-
-    private var results: [PressingCandidate] {
-        query.trimmingCharacters(in: .whitespaces).isEmpty ? [] : PressingCandidate.sample
-    }
+    @State private var query = ""
 
     var body: some View {
         ScrollView {
@@ -362,27 +392,27 @@ struct TextSearchView: View {
                         .font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(Palette.tertiary)
                     TextField("Artist or album title", text: $query)
-                        .font(.prBody)
-                        .foregroundStyle(Palette.label)
+                        .font(.prBody).foregroundStyle(Palette.label)
                         .autocorrectionDisabled()
+                        .submitLabel(.search)
+                        .onSubmit { model.runTextSearch(query) }
+                    if !query.isEmpty {
+                        Button("Search") { model.runTextSearch(query) }
+                            .font(.prFootnote).foregroundStyle(Palette.tint)
+                    }
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
+                .padding(.horizontal, 12).padding(.vertical, 10)
                 .background(Palette.controlFill, in: RoundedRectangle(cornerRadius: 11, style: .continuous))
                 .padding(.bottom, 14)
 
-                if results.isEmpty {
-                    Text("Search Discogs by artist or title, then pick the exact pressing.")
-                        .font(.prBody)
-                        .foregroundStyle(Palette.secondary)
-                        .padding(.top, 40)
-                        .frame(maxWidth: .infinity)
+                if model.matches.isEmpty {
+                    Text("Search by artist or album title, then pick the exact pressing.")
+                        .font(.prBody).foregroundStyle(Palette.secondary)
+                        .frame(maxWidth: .infinity).padding(.top, 40)
                 } else {
-                    ForEach(results) { candidate in
-                        NavigationLink(value: AddRoute.candidate(candidate)) {
-                            CandidateRow(candidate: candidate)
-                        }
-                        .buttonStyle(.plain)
+                    ForEach(model.matches) { match in
+                        Button { model.choose(match) } label: { CandidateRow(match: match) }
+                            .buttonStyle(.plain)
                     }
                 }
             }
@@ -391,18 +421,8 @@ struct TextSearchView: View {
         .background(Palette.background)
         .navigationTitle("Search")
         .navigationBarTitleDisplayMode(.inline)
-        .navigationDestination(for: AddRoute.self) { route in
-            switch route {
-            case let .candidate(candidate):
-                RecordFormView(mode: .prefilled(candidate.recordDetail()), onComplete: onComplete)
-            default:
-                RecordFormView(mode: .new, onComplete: onComplete)
-            }
-        }
         .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                Button("Cancel") { dismiss() }
-            }
+            ToolbarItem(placement: .topBarLeading) { Button("Cancel") { dismiss() } }
         }
     }
 }
