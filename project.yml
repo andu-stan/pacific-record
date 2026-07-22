@@ -1,0 +1,41 @@
+# XcodeGen spec — generates PacificRecord.xcodeproj from these text files.
+# Install once:  brew install xcodegen
+# Generate:      xcodegen generate   (then open PacificRecord.xcodeproj)
+name: PacificRecord
+options:
+  bundleIdPrefix: com.pacificrecord
+  createIntermediateGroups: true
+  deploymentTarget:
+    iOS: "17.0"
+
+packages:
+  VinylCore:
+    path: VinylCore
+
+targets:
+  PacificRecord:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: PacificRecord/Sources
+    resources:
+      - path: PacificRecord/Resources
+    dependencies:
+      - package: VinylCore
+        product: VinylCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.pacificrecord.app
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SWIFT_VERSION: "5.9"
+        TARGETED_DEVICE_FAMILY: "1"          # iPhone only
+        GENERATE_INFOPLIST_FILE: YES
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        INFOPLIST_KEY_NSCameraUsageDescription: "Pacific Record uses the camera to scan record barcodes."
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
+        INFOPLIST_KEY_CFBundleDisplayName: Pacific Record

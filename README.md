@@ -33,16 +33,37 @@ can be opened and read by other applications — not locked inside the app.
 - [`docs/PLAN.md`](docs/PLAN.md) — full development plan: architecture,
   storage design, metadata pipeline, screens, milestones, risks.
 - [`docs/schema.sql`](docs/schema.sql) — the SQLite schema, annotated.
+- [`docs/design/`](docs/design) — the source design (Claude Design export)
+  the UI is built from.
 - [`VinylCore/`](VinylCore) — the portable, UI-free core (models, database,
   metadata clients) as a Swift package with tests.
+- [`PacificRecord/`](PacificRecord) — the SwiftUI iOS app.
+
+## Building
+
+The app is generated from [`project.yml`](project.yml) with
+[XcodeGen](https://github.com/yonaskolb/XcodeGen):
+
+```sh
+brew install xcodegen      # one-time
+xcodegen generate          # writes PacificRecord.xcodeproj
+open PacificRecord.xcodeproj
+```
+
+To build/verify just the core from the command line: `cd VinylCore && swift test`.
 
 ## Status
 
-The **`VinylCore`** package is scaffolded — data models, the GRDB-backed
-`LibraryStore` (schema, CRUD, full-text search), the Discogs/MusicBrainz
-metadata clients, and unit tests. Build and verify it with `cd VinylCore &&
-swift test` on a Mac. The SwiftUI iOS app target is the next step; see the
-roadmap in [`docs/PLAN.md`](docs/PLAN.md).
+- **`VinylCore`** — data models, the GRDB-backed `LibraryStore` (schema, CRUD,
+  full-text search), the Discogs/MusicBrainz metadata clients, and unit tests.
+- **`PacificRecord`** — the SwiftUI app implementing the design: a design-system
+  layer (SF Pro type scale + adaptive light/dark palette), the Library
+  (grid / list / empty), Record detail, the add flow (chooser → scanner →
+  match → form), Settings, and first-run onboarding, all wired to `VinylCore`
+  and seeded with a sample library. Fonts are **SF Pro only** (the system
+  font); icons use SF Symbols.
+
+See the roadmap in [`docs/PLAN.md`](docs/PLAN.md).
 
 > **Build note:** iOS apps compile with Xcode on macOS. The plan splits the
 > code into a portable **VinylCore** Swift package (models, database, metadata

@@ -1,0 +1,79 @@
+import Foundation
+import Observation
+import VinylCore
+
+enum LibraryLayout {
+    case grid
+    case list
+}
+
+/// Observable UI state over `VinylCore.LibraryStore`. Owns the current record
+/// list plus the search/sort/layout the Library screen drives.
+@MainActor
+@Observable
+final class LibraryModel {
+    private let store: LibraryStore
+
+    var records: [Release] = []
+    var searchText: String = ""
+    var sort: LibraryStore.SortOrder = .artist
+    var layout: LibraryLayout = .grid
+
+    init(store: LibraryStore) {
+        self.store = store
+        reload()
+    }
+
+    var count: Int { records.count }
+
+    var artistCount: Int {
+        Set(records.map(\.artistDisplay)).count
+    }
+
+    var isEmpty: Bool { records.isEmpty && searchText.isEmpty }
+
+    func reload() {
+        let trimmed = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        do {
+            records = trimmed.isEmpty
+                ? try store.allReleases(sortedBy: sort)
+                : try store.search(trimmed)
+        } catch {
+            records = []
+        }
+    }
+
+    func detail(for release: Release) -> RecordDetail? {
+        try? store.detail(id: release.id)
+    }
+
+    func detail(id: String) -> RecordDetail? {
+        try? store.detail(id: id)
+    }
+
+    func save(_ detail: RecordDetail) {
+        try? store.save(detail)
+        reload()
+    }
+
+    func delete(_ release: Release) {
+        try? store.delete(id: release.id)
+        reload()
+    }
+}
+
+extension LibraryStore.SortOrder: CaseIterable {
+    public static var allCases: [LibraryStore.SortOrder] {
+        [.artist, .title, .yearDescending, .dateAddedDescending, .ratingDescending]
+    }
+
+    var label: String {
+        switch self {
+        case .artist: return "Artist"
+        case .title: return "Title"
+        case .yearDescending: return "Year"
+        case .dateAddedDescending: return "Recently added"
+        case .ratingDescending: return "Rating"
+        }
+    }
+}
