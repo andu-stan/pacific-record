@@ -1,0 +1,22 @@
+{
+  "id": 249504,
+  "title": "Kind Of Blue",
+  "year": 1959,
+  "country": "US",
+  "genres": ["Jazz"],
+  "styles": ["Modal", "Hard Bop"],
+  "artists": [{ "name": "Miles Davis" }],
+  "labels": [{ "name": "Columbia", "catno": "CS 8163" }],
+  "formats": [
+    { "name": "Vinyl", "qty": "1", "descriptions": ["LP", "Album", "45 RPM"] }
+  ],
+  "identifiers": [{ "type": "Barcode", "value": "888880000001" }],
+  "images": [
+    { "type": "secondary", "uri": "https://img.discogs.com/back.jpg", "uri150": "https://img.discogs.com/back150.jpg" },
+    { "type": "primary", "uri": "https://img.discogs.com/front-hires.jpg", "uri150": "https://img.discogs.com/front150.jpg" }
+  ],
+  "tracklist": [
+    { "position": "A1", "title": "So What", "duration": "9:22" },
+    { "position": "A2", "title": "Freddie Freeloader", "duration": "9:46" }
+  ]
+}

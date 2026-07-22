@@ -62,9 +62,9 @@ CREATE TABLE artist (
 CREATE TABLE release_artist (
     release_id TEXT NOT NULL REFERENCES release(id) ON DELETE CASCADE,
     artist_id  TEXT NOT NULL REFERENCES artist(id)  ON DELETE CASCADE,
-    role       TEXT,                            -- "Main", "Featuring", "Producer", ...
-    position   INTEGER DEFAULT 0,               -- ordering of credits
-    PRIMARY KEY (release_id, artist_id, role)
+    role       TEXT NOT NULL DEFAULT 'Main',     -- "Main", "Featuring", "Producer", ...
+    position   INTEGER NOT NULL DEFAULT 0,       -- ordering of credits
+    PRIMARY KEY (release_id, artist_id, role)    -- role is NOT NULL so it's a safe key part
 );
 
 -- -----------------------------------------------------------------------------
@@ -78,8 +78,8 @@ CREATE TABLE label (
 CREATE TABLE release_label (
     release_id     TEXT NOT NULL REFERENCES release(id) ON DELETE CASCADE,
     label_id       TEXT NOT NULL REFERENCES label(id)   ON DELETE CASCADE,
-    catalog_number TEXT,
-    PRIMARY KEY (release_id, label_id, catalog_number)
+    catalog_number TEXT,                            -- kept out of the PK (may be NULL)
+    PRIMARY KEY (release_id, label_id)
 );
 
 -- -----------------------------------------------------------------------------

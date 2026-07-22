@@ -1,0 +1,25 @@
+{
+  "count": 1,
+  "offset": 0,
+  "releases": [
+    {
+      "id": "1e5dfa7e-6e2c-4a1b-9c7d-000000000000",
+      "title": "Kind of Blue",
+      "date": "1959-08-17",
+      "country": "US",
+      "barcode": "888880000001",
+      "artist-credit": [{ "name": "Miles Davis", "joinphrase": "" }],
+      "label-info": [
+        { "catalog-number": "CL 1355", "label": { "name": "Columbia" } }
+      ],
+      "media": [
+        {
+          "format": "Vinyl",
+          "tracks": [
+            { "number": "1", "title": "So What", "length": 562000 }
+          ]
+        }
+      ]
+    }
+  ]
+}

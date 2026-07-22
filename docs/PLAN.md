@@ -19,8 +19,10 @@ From the initial scoping conversation:
 ## 2. Assumptions & defaults (change any of these)
 
 - **Platform:** iOS 17+ (needed for VisionKit `DataScannerViewController`, the
-  Observation framework, and modern SwiftUI). iPhone-first UI that adapts to iPad
-  via `NavigationSplitView`. No separate macOS build in v1.
+  Observation framework, and modern SwiftUI). **iPhone only for v1** (per
+  decision) — no iPad-specific layouts or macOS build yet. The `VinylCore`
+  package stays platform-neutral so an iPad/Mac UI could be added later without
+  touching the data or metadata layers.
 - **UI:** SwiftUI, Swift 5.9+ (Swift 6 concurrency where it's low-friction).
 - **Database engine:** [GRDB.swift](https://github.com/groue/GRDB.swift) over
   SQLite — chosen because your requirement is a *portable, externally-readable*
@@ -202,7 +204,6 @@ always in control of what's stored.
 
 1. **Library** — cover-art grid ⇄ list toggle; sort (artist, title, year, date
    added, rating); filter (genre, format, condition); FTS search bar.
-   `NavigationSplitView` on iPad.
 2. **Record Detail** — large cover (tap for full-screen), all fields, tracklist,
    condition, rating, notes; edit / delete.
 3. **Add Record** — entry sheet: *Scan barcode* · *Search by text* · *Enter
@@ -228,17 +229,18 @@ always in control of what's stored.
   settings, MusicBrainz fallback, match/confirm screen, hi-res cover download +
   thumbnailing, text search.
 - **M4 — Polish & ship:** onboarding, empty/error states, rate-limit UX,
-  accessibility (VoiceOver, Dynamic Type), iPad layout, app icon, TestFlight or
-  sideload.
+  accessibility (VoiceOver, Dynamic Type), app icon, TestFlight or sideload.
 - **Later (Full-manager phase):** purchase price/date, storage location, play
   counts, tags, wishlist, Discogs collection import, CSV/JSON export, stats,
   optional Nextcloud backend.
 
 ## 9. Testing
 
-- `VinylCore` unit tests run on Linux CI: GRDB migrations against an in-memory
-  DB, metadata parsing against recorded Discogs/MusicBrainz JSON fixtures,
-  condition/rating logic, FTS query building.
+- `VinylCore` unit tests run from the command line with `swift test` (no
+  simulator needed): GRDB migrations + CRUD round-trips, FTS search, and
+  metadata parsing against recorded Discogs/MusicBrainz JSON fixtures. All
+  network access goes through an injectable `HTTPClient`, so no test needs a
+  token or a connection.
 - iOS-side: lightweight UI tests for the add-record flow; manual QA for
   camera/scan and iCloud sync (hardware-dependent).
 
@@ -255,21 +257,30 @@ always in control of what's stored.
   every 7 days; TestFlight builds last 90 days but need a paid Apple Developer
   account ($99/yr). Worth deciding before M4.
 
-## 11. Building in this environment
+## 11. Status & what's built
 
-This is a Linux cloud environment, so it **can't compile or run the iOS app**
-(that needs Xcode on macOS). What it *can* do right now, if you want to proceed:
+The **`VinylCore`** package is scaffolded (see [`../VinylCore`](../VinylCore)):
 
-- Scaffold the `VinylCore` Swift package — models, the GRDB schema + migrations,
-  and the Discogs/MusicBrainz clients — with unit tests that build and run here.
-- Set up the Xcode project structure and SwiftUI view skeletons for you to open
-  and finish on a Mac.
+- Models — `Release`, `Artist`, `Label`, `Track`, `Condition` (Goldmine), plus
+  the `RecordDetail` / `LabelCredit` aggregates.
+- `LibraryStore` — GRDB migrations for the full schema, save/update/delete,
+  sorted listing, `detail(id:)`, and FTS5 search.
+- Metadata — `DiscogsClient`, `MusicBrainzClient`, and `CompositeMetadataProvider`
+  (Discogs-primary, MusicBrainz-fallback) behind an injectable `HTTPClient`.
+- `CoverImageManager` — cover download + ImageIO thumbnailing.
+- Tests — DB round-trip, FTS, and Discogs/MusicBrainz parsing against fixtures.
 
-## 12. Open questions for you
+> **Not yet compiled in this environment.** This Linux box's egress policy
+> blocks `download.swift.org`, so the Swift toolchain couldn't be installed
+> here. The package is written to build with Swift 5.9+ / Xcode; run
+> `cd VinylCore && swift test` on your Mac to compile and verify.
 
-1. **iPad:** iPhone-first with iPad-compatible layouts is the current default —
-   want first-class iPad support, or iPhone-only for now?
-2. **Existing collection:** do you already have records in Discogs (or a
-   spreadsheet) you'd want to import to seed the library?
-3. **Next step:** should I start scaffolding the `VinylCore` package here (real,
-   testable code), or keep iterating on this plan first?
+## 12. Remaining next steps
+
+1. **On a Mac:** run `swift test` in `VinylCore`, fix any toolchain-specific
+   nits, then create the `PacificRecord` iOS app target (SwiftUI) depending on
+   the package.
+2. **M1 UI:** wire the Library / Detail / Add-Edit screens to `LibraryStore`
+   against a local database file.
+3. **M2/M3:** add the iCloud container + file coordination, then the VisionKit
+   scanner and live metadata lookup.
