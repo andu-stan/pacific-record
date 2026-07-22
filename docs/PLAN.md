@@ -259,28 +259,27 @@ always in control of what's stored.
 
 ## 11. Status & what's built
 
-The **`VinylCore`** package is scaffolded (see [`../VinylCore`](../VinylCore)):
-
-- Models — `Release`, `Artist`, `Label`, `Track`, `Condition` (Goldmine), plus
-  the `RecordDetail` / `LabelCredit` aggregates.
-- `LibraryStore` — GRDB migrations for the full schema, save/update/delete,
-  sorted listing, `detail(id:)`, and FTS5 search.
-- Metadata — `DiscogsClient`, `MusicBrainzClient`, and `CompositeMetadataProvider`
-  (Discogs-primary, MusicBrainz-fallback) behind an injectable `HTTPClient`.
-- `CoverImageManager` — cover download + ImageIO thumbnailing.
-- Tests — DB round-trip, FTS, and Discogs/MusicBrainz parsing against fixtures.
+- **`VinylCore`** (see [`../VinylCore`](../VinylCore)) — models, `LibraryStore`
+  (GRDB migrations, CRUD, FTS5), the Discogs/MusicBrainz clients behind an
+  injectable `HTTPClient`, `CoverImageManager`, and unit tests.
+- **`PacificRecord`** (see [`../PacificRecord`](../PacificRecord)) — the SwiftUI
+  app: design-system layer (SF Pro, adaptive light/dark), Library / Detail /
+  Add-Edit / Settings / Onboarding, **M1** local CRUD, **M3** VisionKit scanning
+  + live Discogs/MusicBrainz lookup with cover download, and **M2** iCloud Drive
+  storage (async resolve, local fallback, Settings toggle, copy-on-switch
+  migration).
 
 > **Not yet compiled in this environment.** This Linux box's egress policy
 > blocks `download.swift.org`, so the Swift toolchain couldn't be installed
-> here. The package is written to build with Swift 5.9+ / Xcode; run
-> `cd VinylCore && swift test` on your Mac to compile and verify.
+> here. Build with Xcode on a Mac (`xcodegen generate`); `swift test` runs the
+> `VinylCore` unit tests.
 
 ## 12. Remaining next steps
 
-1. **On a Mac:** run `swift test` in `VinylCore`, fix any toolchain-specific
-   nits, then create the `PacificRecord` iOS app target (SwiftUI) depending on
-   the package.
-2. **M1 UI:** wire the Library / Detail / Add-Edit screens to `LibraryStore`
-   against a local database file.
-3. **M2/M3:** add the iCloud container + file coordination, then the VisionKit
-   scanner and live metadata lookup.
+1. **iCloud robustness:** conflict resolution (`NSFileVersion` unresolved
+   conflicts) and automatic timestamped backups — v1 does copy-on-switch and
+   placeholder download, but not multi-device simultaneous-edit merges.
+2. **M4 polish:** VoiceOver/Dynamic Type passes, error/empty-state coverage,
+   rate-limit UX for Discogs, app icon, TestFlight.
+3. **Deferred (Full-manager phase):** purchase price/date, storage location,
+   play counts, tags, wishlist, CSV/JSON export, Discogs collection import.

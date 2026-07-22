@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(AppModel.self) private var app
     @AppStorage("discogsToken") private var token = ""
     @State private var showTokenEntry = false
     @State private var tokenDraft = ""
@@ -13,17 +14,6 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: 22) {
                 metadataSection
                 storageSection
-                HStack(spacing: 12) {
-                    PrimaryButton(title: "Back up now") {}
-                    Button {} label: {
-                        Text("Backups")
-                            .font(.prBodyEmphasis)
-                            .foregroundStyle(Palette.tint)
-                            .padding(.vertical, 15).padding(.horizontal, 18)
-                            .background(Palette.fill, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                    }
-                    .buttonStyle(.plain)
-                }
             }
             .padding(.horizontal, Metrics.screenPadding)
             .padding(.bottom, 24)
@@ -84,14 +74,14 @@ struct SettingsView: View {
                 }
             }
 
-            Text("Source order — dragged to reorder lookups.")
+            Text("Without a token, lookups use MusicBrainz. Add one for Discogs' richer pressing data.")
                 .font(.prSmall).foregroundStyle(Palette.tertiary)
                 .padding(.horizontal, 4)
 
             GroupedCard(radius: 14) {
                 VStack(spacing: 0) {
-                    sourceRow(index: 1, name: "Discogs", divider: true)
-                    sourceRow(index: 2, name: "MusicBrainz", divider: false)
+                    sourceRow(index: 1, name: token.isEmpty ? "MusicBrainz" : "Discogs", divider: true)
+                    sourceRow(index: 2, name: token.isEmpty ? "—" : "MusicBrainz", divider: false)
                 }
             }
         }
@@ -103,9 +93,6 @@ struct SettingsView: View {
                 Text("\(index)").font(.prBadge).foregroundStyle(Palette.quaternary)
                 Text(name).font(.prBody).foregroundStyle(Palette.label)
                 Spacer()
-                Image(systemName: "line.3.horizontal")
-                    .font(.system(size: 16))
-                    .foregroundStyle(Palette.quaternary)
             }
             .padding(.vertical, 12)
             if divider { HRule() }
@@ -113,6 +100,13 @@ struct SettingsView: View {
     }
 
     // MARK: Storage
+
+    private var iCloudToggle: Binding<Bool> {
+        Binding(
+            get: { app.prefersICloud && app.iCloudAvailable },
+            set: { app.setPreferICloud($0) }
+        )
+    }
 
     private var storageSection: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -122,39 +116,44 @@ struct SettingsView: View {
                     HStack(spacing: 12) {
                         ZStack {
                             RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                .fill(Palette.iCloudBlue).frame(width: 38, height: 38)
-                            Image(systemName: "icloud.fill").foregroundStyle(.white).font(.system(size: 18))
+                                .fill(app.storageMode == .iCloud ? Palette.iCloudBlue : Color(hex: 0x48484A))
+                                .frame(width: 38, height: 38)
+                            Image(systemName: app.storageMode == .iCloud ? "icloud.fill" : "internaldrive.fill")
+                                .foregroundStyle(.white).font(.system(size: 18))
                         }
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("iCloud Drive").font(.prBodyEmphasis).foregroundStyle(Palette.label)
-                            Text("Pacific Record / Library.prlib")
+                            Text(app.storageMode == .iCloud ? "iCloud Drive" : "On this iPhone")
+                                .font(.prBodyEmphasis).foregroundStyle(Palette.label)
+                            Text(app.storageMode == .iCloud ? "Pacific Record · visible in Files"
+                                                            : "Documents / Pacific Record")
                                 .font(.prSmall).foregroundStyle(Palette.tertiary)
                         }
                         Spacer()
+                        if app.switchingStorage { ProgressView().controlSize(.small) }
                     }
                     .padding(.bottom, 12)
                     HRule()
-                    storageRow("Last synced", "Today, 9:32 AM")
-                    storageRow("Library size", "248 records · 84 MB")
-                    HRule()
-                    Button {} label: {
-                        Text("Reveal in Files")
-                            .font(.prFootnote).foregroundStyle(Palette.tint)
-                            .frame(maxWidth: .infinity)
-                            .padding(.top, 10)
+                    HStack {
+                        Text("Use iCloud Drive").font(.prBody).foregroundStyle(Palette.label)
+                        Spacer()
+                        Toggle("", isOn: iCloudToggle)
+                            .labelsHidden()
+                            .tint(Palette.accent)
+                            .disabled(!app.iCloudAvailable || app.switchingStorage)
                     }
-                    .buttonStyle(.plain)
+                    .padding(.top, 10)
+                    if !app.iCloudAvailable {
+                        Text("Sign in to iCloud and turn on iCloud Drive to sync across devices.")
+                            .font(.prSmall).foregroundStyle(Palette.tertiary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.top, 8)
+                    }
                 }
             }
-        }
-    }
 
-    private func storageRow(_ label: String, _ value: String) -> some View {
-        HStack {
-            Text(label).font(.prFootnote).foregroundStyle(Palette.secondary)
-            Spacer()
-            Text(value).font(.system(size: 15, weight: .semibold)).foregroundStyle(Palette.label)
+            Text("Your library is a plain SQLite file plus a Covers folder — other apps can open it directly.")
+                .font(.prSmall).foregroundStyle(Palette.tertiary)
+                .padding(.horizontal, 4)
         }
-        .padding(.vertical, 8)
     }
 }

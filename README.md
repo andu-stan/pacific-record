@@ -52,6 +52,17 @@ open PacificRecord.xcodeproj
 
 To build/verify just the core from the command line: `cd VinylCore && swift test`.
 
+### iCloud signing
+
+The app declares an iCloud Documents container (`iCloud.com.pacificrecord.app`)
+so the library appears in the Files app and syncs across devices. Building with
+this requires a **paid Apple Developer account**: open the project, select your
+Team under Signing & Capabilities, and let automatic signing provision the
+container (rename the bundle id + container id to your own if needed — they must
+match). On a **free** account, remove `CODE_SIGN_ENTITLEMENTS` and the
+`NSUbiquitousContainers` key — the app then runs entirely on-device (it already
+falls back to local storage at runtime whenever iCloud is unavailable).
+
 ## Status
 
 - **`VinylCore`** — data models, the GRDB-backed `LibraryStore` (schema, CRUD,
@@ -67,6 +78,11 @@ To build/verify just the core from the command line: `cd VinylCore && swift test
     enriched, its cover downloaded to the library folder, and the form is
     prefilled for you to add condition/rating before saving.
   - The library **starts empty** — no seeded sample data.
+  - **iCloud Drive storage** — the SQLite file + `Covers/` folder live in the
+    app's iCloud container (visible in Files, readable by other apps), resolved
+    asynchronously at launch with a graceful **local fallback** when iCloud is
+    off. Switchable from Settings; switching copies your library to the new
+    location (never deletes).
 
 See the roadmap in [`docs/PLAN.md`](docs/PLAN.md).
 
