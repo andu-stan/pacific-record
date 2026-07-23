@@ -135,7 +135,10 @@ final class LibraryModel {
     }
 
     func setValue(amount: Double, currency: String, basis: String, for release: Release) {
-        var updated = release
+        // Re-fetch the current record so we only change the value fields and
+        // never clobber others (media/sleeve, rating, notes…) from a stale
+        // snapshot captured before an edit.
+        guard var updated = try? store.detail(id: release.id)?.release else { return }
         updated.estimatedValue = amount
         updated.valueCurrency = currency
         updated.valueBasis = basis

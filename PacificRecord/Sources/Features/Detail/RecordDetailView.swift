@@ -151,8 +151,8 @@ struct RecordDetailContent: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 0) {
-                CoverArtView(seed: release.coverSeed, coverPath: release.coverPath, cornerRadius: 12)
-                    .frame(width: 236, height: 236)
+                CoverArtView(seed: release.coverSeed, coverPath: release.coverPath, cornerRadius: 12, contentMode: .fit)
+                    .frame(maxWidth: 236, maxHeight: 236)
                     .shadow(color: .black.opacity(0.85), radius: 30, y: 24)
                     .padding(.top, 6)
                     .contentShape(Rectangle())

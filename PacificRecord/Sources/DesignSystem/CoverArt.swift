@@ -86,17 +86,24 @@ struct CoverArtView: View {
     let seed: String
     var coverPath: String? = nil
     var cornerRadius: CGFloat = Metrics.tileRadius
+    /// `.fill` crops to a square tile (grid/list/form); `.fit` shows the whole
+    /// cover at its natural aspect ratio, uncropped (the detail page).
+    var contentMode: ContentMode = .fill
 
     @Environment(\.libraryFolderURL) private var libraryFolder
 
     var body: some View {
         Group {
             if let image = localImage {
-                // Draw the (possibly non-square) cover as an overlay on a
-                // flexible base, so `scaledToFill` crops it to the tile without
-                // the image's aspect ratio driving the layout.
-                CoverGradient.style(for: seed).view
-                    .overlay { Image(uiImage: image).resizable().scaledToFill() }
+                if contentMode == .fit {
+                    // Whole cover, no crop — the view takes the image's ratio.
+                    Image(uiImage: image).resizable().scaledToFit()
+                } else {
+                    // Fill and crop to the tile without the image's aspect ratio
+                    // driving the layout (flexible gradient base sets the size).
+                    CoverGradient.style(for: seed).view
+                        .overlay { Image(uiImage: image).resizable().scaledToFill() }
+                }
             } else {
                 CoverGradient.style(for: seed).view.overlay(coverSheen)
             }
