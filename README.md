@@ -115,6 +115,12 @@ To enable it once you have a **paid Apple Developer** team:
     set a default); the add/edit form has a location picker that preselects the
     default and can create a new location inline; the detail screen shows it.
     Deleting a location unassigns its records rather than deleting them.
+  - **Filter & bulk actions** — the Library's **Filter** control narrows the
+    list by location (incl. *Unassigned*), genre, format, media condition, and
+    minimum rating; the count, value total, and search all reflect the filter.
+    A **Select** mode turns rows/tiles into a multi-select with a bottom action
+    bar to **reassign the location** of, or **delete**, many records at once
+    (batched in a single transaction), plus Select-All over the filtered set.
 
 See the roadmap in [`docs/PLAN.md`](docs/PLAN.md).
 

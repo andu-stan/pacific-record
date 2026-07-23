@@ -21,20 +21,31 @@ final class LibraryModel {
     var sort: LibraryStore.SortOrder = .artist
     var layout: LibraryLayout = .grid
     var locations: [Location] = []
+    var filter = LibraryFilter()
+    var availableGenres: [String] = []
+    var availableFormats: [String] = []
 
     init(store: LibraryStore, libraryFolder: URL) {
         self.store = store
         self.libraryFolder = libraryFolder
         reload()
         reloadLocations()
+        refreshFacets()
     }
 
-    var count: Int { records.count }
+    /// The records actually shown: the fetched list narrowed by the facet filter.
+    var visibleRecords: [Release] {
+        filter.isActive ? records.filter(filter.matches) : records
+    }
+
+    var count: Int { visibleRecords.count }
 
     var artistCount: Int {
-        Set(records.map(\.artistDisplay)).count
+        Set(visibleRecords.map(\.artistDisplay)).count
     }
 
+    /// True only when the whole library is empty (not merely filtered/searched
+    /// to nothing) — that's when the onboarding empty state should show.
     var isEmpty: Bool { records.isEmpty && searchText.isEmpty }
 
     func reload() {
@@ -59,11 +70,36 @@ final class LibraryModel {
     func save(_ detail: RecordDetail) {
         try? store.save(detail)
         reload()
+        refreshFacets()
     }
 
     func delete(_ release: Release) {
         try? store.delete(id: release.id)
         reload()
+        refreshFacets()
+    }
+
+    // MARK: Bulk actions
+
+    /// Assigns (or clears, with `nil`) the location of the given records.
+    func setLocation(_ locationID: String?, for ids: Set<String>) {
+        guard !ids.isEmpty else { return }
+        try? store.setLocation(locationID, forReleaseIDs: Array(ids))
+        reload()
+    }
+
+    /// Deletes the given records in one transaction.
+    func delete(ids: Set<String>) {
+        guard !ids.isEmpty else { return }
+        try? store.delete(ids: Array(ids))
+        reload()
+        refreshFacets()
+    }
+
+    /// Distinct genres/formats present in the library, for the filter sheet.
+    func refreshFacets() {
+        availableGenres = (try? store.genres()) ?? []
+        availableFormats = (try? store.formats()) ?? []
     }
 
     func setValue(amount: Double, currency: String, basis: String, for release: Release) {
@@ -116,10 +152,11 @@ final class LibraryModel {
         reload()
     }
 
-    /// Sum of every record's estimated value, grouped by currency.
+    /// Sum of the visible records' estimated value, grouped by currency (so it
+    /// reflects the current filter).
     var totalValueByCurrency: [String: Double] {
         var totals: [String: Double] = [:]
-        for record in records {
+        for record in visibleRecords {
             if let amount = record.estimatedValue, let currency = record.valueCurrency {
                 totals[currency, default: 0] += amount
             }

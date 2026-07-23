@@ -319,6 +319,58 @@ public final class LibraryStore {
         }
     }
 
+    // MARK: - Bulk operations
+
+    /// Assigns (or clears, with `nil`) the location of many records in one
+    /// transaction. Unknown ids are skipped.
+    public func setLocation(_ locationID: String?, forReleaseIDs ids: [String]) throws {
+        guard !ids.isEmpty else { return }
+        try dbQueue.write { db in
+            for id in ids {
+                guard var release = try Release.fetchOne(db, key: id) else { continue }
+                release.locationID = locationID
+                release.updatedAt = Date()
+                try release.update(db)
+            }
+        }
+    }
+
+    /// Deletes many records — associations cascade, FTS rows are removed — in a
+    /// single transaction.
+    public func delete(ids: [String]) throws {
+        guard !ids.isEmpty else { return }
+        try dbQueue.write { db in
+            for id in ids {
+                _ = try Release.deleteOne(db, key: id)
+                try db.execute(sql: "DELETE FROM release_fts WHERE release_uuid = ?", arguments: [id])
+            }
+        }
+    }
+
+    // MARK: - Facets
+
+    /// Distinct non-empty genres present in the library (for the filter UI).
+    public func genres() throws -> [String] {
+        try dbQueue.read { db in
+            try String.fetchAll(db, sql: """
+                SELECT DISTINCT genre FROM release
+                WHERE genre IS NOT NULL AND genre <> ''
+                ORDER BY genre COLLATE NOCASE
+                """)
+        }
+    }
+
+    /// Distinct non-empty formats present in the library (for the filter UI).
+    public func formats() throws -> [String] {
+        try dbQueue.read { db in
+            try String.fetchAll(db, sql: """
+                SELECT DISTINCT format FROM release
+                WHERE format IS NOT NULL AND format <> ''
+                ORDER BY format COLLATE NOCASE
+                """)
+        }
+    }
+
     // MARK: - Helpers
 
     private static func orderClause(_ sort: SortOrder) -> String {

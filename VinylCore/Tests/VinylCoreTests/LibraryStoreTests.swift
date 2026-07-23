@@ -85,6 +85,47 @@ final class LibraryStoreTests: XCTestCase {
         XCTAssertEqual(titles, ["Newer", "Older", "Undated"])
     }
 
+    func testBulkSetLocationAndBulkDelete() throws {
+        let store = try makeTempStore()
+        let shelf = try store.addLocation(name: "Shelf")
+        let ids = (0..<3).map { _ in UUID().uuidString }
+        for (i, id) in ids.enumerated() {
+            try store.save(sampleDetail(id: id, title: "T\(i)", artist: "A\(i)"))
+        }
+
+        try store.setLocation(shelf.id, forReleaseIDs: ids)
+        for id in ids {
+            XCTAssertEqual(try store.detail(id: id)?.release.locationID, shelf.id)
+        }
+
+        // Clearing with nil unassigns them.
+        try store.setLocation(nil, forReleaseIDs: [ids[0]])
+        XCTAssertNil(try store.detail(id: ids[0])?.release.locationID)
+        XCTAssertEqual(try store.detail(id: ids[1])?.release.locationID, shelf.id)
+
+        try store.delete(ids: [ids[0], ids[1]])
+        XCTAssertEqual(try store.count(), 1)
+        XCTAssertNil(try store.detail(id: ids[0]))
+        XCTAssertEqual(try store.search("T2").count, 1) // survivor still searchable
+        XCTAssertEqual(try store.search("T0").count, 0) // FTS rows removed
+    }
+
+    func testGenreAndFormatFacets() throws {
+        let store = try makeTempStore()
+        var jazzLP = sampleDetail(title: "A", artist: "X")
+        jazzLP.release.genre = "Jazz"; jazzLP.release.format = "LP"
+        try store.save(jazzLP)
+        var rockEP = sampleDetail(title: "B", artist: "Y")
+        rockEP.release.genre = "Rock"; rockEP.release.format = "EP"
+        try store.save(rockEP)
+        var jazzAgain = sampleDetail(title: "C", artist: "Z")
+        jazzAgain.release.genre = "Jazz"; jazzAgain.release.format = "LP"
+        try store.save(jazzAgain)
+
+        XCTAssertEqual(try store.genres(), ["Jazz", "Rock"])   // distinct, sorted
+        XCTAssertEqual(try store.formats(), ["EP", "LP"])
+    }
+
     func testLocationsDefaultAssignmentAndDelete() throws {
         let store = try makeTempStore()
         let home = try store.addLocation(name: "Home")
