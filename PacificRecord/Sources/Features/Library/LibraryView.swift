@@ -16,7 +16,7 @@ struct LibraryView: View {
         NavigationStack {
             Group {
                 if model.isEmpty {
-                    EmptyLibraryView(onAdd: { showAdd = true })
+                    EmptyLibraryView(onAdd: { showAdd = true }, onImport: { activeAdd = .search })
                 } else {
                     content
                 }
@@ -519,6 +519,7 @@ struct LibraryRow: View {
 
 struct EmptyLibraryView: View {
     var onAdd: () -> Void
+    var onImport: () -> Void
 
     var body: some View {
         VStack(spacing: 0) {
@@ -542,14 +543,14 @@ struct EmptyLibraryView: View {
                 .font(.prTitle2)
                 .foregroundStyle(Palette.label)
                 .padding(.bottom, 10)
-            Text("Scan a barcode, search by title, or add a record by hand. Your library is saved to iCloud Drive.")
+            Text("Scan a barcode, search by title, or add a record by hand. Your library is saved on this iPhone.")
                 .font(.prBody)
                 .foregroundStyle(Palette.secondary)
                 .multilineTextAlignment(.center)
                 .padding(.bottom, 26)
 
             PrimaryButton(title: "Add your first record", action: onAdd)
-            Button(action: onAdd) {
+            Button(action: onImport) {
                 Text("Import from Discogs")
                     .font(.prHeadline)
                     .foregroundStyle(Palette.tint)
