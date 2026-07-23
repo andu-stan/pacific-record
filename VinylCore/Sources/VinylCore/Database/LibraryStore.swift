@@ -7,7 +7,7 @@ import GRDB
 public final class LibraryStore {
     private let dbQueue: DatabaseQueue
 
-    public enum SortOrder: Sendable {
+    public enum SortOrder: Sendable, CaseIterable {
         case artist
         case title
         case yearDescending

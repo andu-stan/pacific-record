@@ -95,11 +95,7 @@ final class LibraryModel {
     }
 }
 
-extension LibraryStore.SortOrder: CaseIterable {
-    public static var allCases: [LibraryStore.SortOrder] {
-        [.artist, .title, .yearDescending, .dateAddedDescending, .ratingDescending]
-    }
-
+extension LibraryStore.SortOrder {
     var label: String {
         switch self {
         case .artist: return "Artist"
