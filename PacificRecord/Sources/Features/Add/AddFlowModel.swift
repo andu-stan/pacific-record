@@ -196,7 +196,9 @@ final class AddFlowModel {
         }
     }
 
-    static func message(for error: Error) -> String {
+    // Pure error → message mapping; nonisolated so background sync/import code
+    // (off the main actor) can reuse it.
+    nonisolated static func message(for error: Error) -> String {
         if let error = error as? MetadataError {
             switch error {
             case .http(429):
