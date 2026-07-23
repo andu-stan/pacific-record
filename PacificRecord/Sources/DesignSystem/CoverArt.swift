@@ -92,7 +92,11 @@ struct CoverArtView: View {
     var body: some View {
         Group {
             if let image = localImage {
-                Image(uiImage: image).resizable().scaledToFill()
+                // Draw the (possibly non-square) cover as an overlay on a
+                // flexible base, so `scaledToFill` crops it to the tile without
+                // the image's aspect ratio driving the layout.
+                CoverGradient.style(for: seed).view
+                    .overlay { Image(uiImage: image).resizable().scaledToFill() }
             } else {
                 CoverGradient.style(for: seed).view.overlay(coverSheen)
             }
@@ -115,20 +119,23 @@ struct RemoteCoverView: View {
     var cornerRadius: CGFloat = 6
 
     var body: some View {
-        Group {
-            if let url {
-                AsyncImage(url: url) { phase in
-                    if let image = phase.image {
-                        image.resizable().scaledToFill()
-                    } else {
-                        CoverGradient.style(for: seed).view.overlay(coverSheen)
+        // Flexible gradient base drives the layout size; the remote image (which
+        // may not be square) is an overlay that fills and crops, clipped to the
+        // tile. While loading / on failure the gradient placeholder shows.
+        CoverGradient.style(for: seed).view
+            .overlay(coverSheen)
+            .overlay {
+                if let url {
+                    AsyncImage(url: url) { phase in
+                        if let image = phase.image {
+                            image.resizable().scaledToFill()
+                        } else {
+                            Color.clear
+                        }
                     }
                 }
-            } else {
-                CoverGradient.style(for: seed).view.overlay(coverSheen)
             }
-        }
-        .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-        .accessibilityHidden(true)
+            .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+            .accessibilityHidden(true)
     }
 }
