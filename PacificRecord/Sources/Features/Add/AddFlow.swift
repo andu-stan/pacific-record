@@ -105,6 +105,8 @@ struct AddFlowContainer: View {
                     switch step {
                     case .matches:
                         MatchView(model: model)
+                    case .coverPicker:
+                        CoverPickerView(model: model)
                     case .form:
                         RecordFormView(mode: .prefilled(model.formDraft), onComplete: model.onComplete)
                     }
@@ -375,6 +377,50 @@ struct CandidateRow: View {
         [match.year.map(String.init), match.country, match.format]
             .compactMap { $0 }
             .joined(separator: " · ")
+    }
+}
+
+// MARK: - Cover picker
+
+struct CoverPickerView: View {
+    @Bindable var model: AddFlowModel
+    private let columns = [GridItem(.flexible(), spacing: 14), GridItem(.flexible(), spacing: 14)]
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Pick the cover to use for this record.")
+                    .font(.prBody).foregroundStyle(Palette.secondary)
+
+                LazyVGrid(columns: columns, spacing: 16) {
+                    ForEach(model.coverCandidates) { candidate in
+                        Button { model.selectCover(candidate) } label: {
+                            VStack(alignment: .leading, spacing: 6) {
+                                RemoteCoverView(url: candidate.url, seed: model.pickerSeed, cornerRadius: 8)
+                                    .aspectRatio(1, contentMode: .fit)
+                                    .shadow(color: .black.opacity(0.5), radius: 7, y: 4)
+                                Text(candidate.source.displayName)
+                                    .font(.prSmall).foregroundStyle(Palette.secondary)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+
+                Button { model.selectCover(nil) } label: {
+                    Text("Skip — add without a cover")
+                        .font(.prHeadline).foregroundStyle(Palette.tint)
+                        .frame(maxWidth: .infinity).padding(.top, 8)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, Metrics.screenPadding)
+            .padding(.top, 8)
+            .padding(.bottom, 24)
+        }
+        .background(Palette.background)
+        .navigationTitle("Choose cover")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 

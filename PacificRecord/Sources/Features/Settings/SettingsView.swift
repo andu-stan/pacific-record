@@ -5,6 +5,7 @@ struct SettingsView: View {
     @Environment(AppModel.self) private var app
     @AppStorage("discogsToken") private var token = ""
     @AppStorage(CoverSource.storageKey) private var coverSourceRaw = CoverSource.appleMusic.rawValue
+    @AppStorage(CoverArtResolver.pickCoverOnImportKey) private var pickCoverOnImport = false
     @State private var showTokenEntry = false
     @State private var tokenDraft = ""
 
@@ -111,30 +112,39 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 8) {
             SectionCaption(text: "Cover art")
             GroupedCard(radius: 14) {
-                Menu {
-                    ForEach(CoverSource.allCases) { source in
-                        Button {
-                            coverSourceRaw = source.rawValue
-                        } label: {
-                            if source.rawValue == coverSourceRaw {
-                                Label(source.displayName, systemImage: "checkmark")
-                            } else {
-                                Text(source.displayName)
+                VStack(spacing: 0) {
+                    Menu {
+                        ForEach(CoverSource.allCases) { source in
+                            Button {
+                                coverSourceRaw = source.rawValue
+                            } label: {
+                                if source.rawValue == coverSourceRaw {
+                                    Label(source.displayName, systemImage: "checkmark")
+                                } else {
+                                    Text(source.displayName)
+                                }
                             }
                         }
+                    } label: {
+                        HStack {
+                            Text("Preferred source").font(.prBody).foregroundStyle(Palette.label)
+                            Spacer()
+                            Text(currentCoverSource.displayName).font(.prBody).foregroundStyle(Palette.secondary)
+                            Image(systemName: "chevron.up.chevron.down")
+                                .font(.system(size: 12)).foregroundStyle(Palette.tertiary)
+                        }
+                        .padding(.vertical, 12)
                     }
-                } label: {
+                    HRule()
                     HStack {
-                        Text("Preferred source").font(.prBody).foregroundStyle(Palette.label)
+                        Text("Choose cover when adding").font(.prBody).foregroundStyle(Palette.label)
                         Spacer()
-                        Text(currentCoverSource.displayName).font(.prBody).foregroundStyle(Palette.secondary)
-                        Image(systemName: "chevron.up.chevron.down")
-                            .font(.system(size: 12)).foregroundStyle(Palette.tertiary)
+                        Toggle("", isOn: $pickCoverOnImport).labelsHidden().tint(Palette.accent)
                     }
-                    .padding(.vertical, 12)
+                    .padding(.vertical, 6)
                 }
             }
-            Text("Apple Music has the cleanest artwork; Cover Art Archive and Discogs cover more pressings. Falls back to the others automatically.")
+            Text("Apple Music has the cleanest artwork; Cover Art Archive and Discogs cover more pressings. With “Choose cover when adding” off, the preferred source is used automatically.")
                 .font(.prSmall).foregroundStyle(Palette.tertiary)
                 .padding(.horizontal, 4)
         }

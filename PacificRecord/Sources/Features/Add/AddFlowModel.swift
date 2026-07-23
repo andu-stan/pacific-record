@@ -9,6 +9,7 @@ import VinylCore
 final class AddFlowModel {
     enum Step: Hashable {
         case matches
+        case coverPicker
         case form
     }
 
@@ -24,6 +25,12 @@ final class AddFlowModel {
     var matches: [MetadataMatch] = []
     var draft: RecordDetail?
     var lastBarcode: String?
+    var coverCandidates: [CoverCandidate] = []
+    private var pendingMatch: MetadataMatch?
+    private var pendingRecordID: String?
+
+    /// Seed for the picker's gradient placeholders (the chosen release title).
+    var pickerSeed: String { pendingMatch?.title ?? "" }
 
     let provider: any MetadataProvider
     private let library: LibraryModel
@@ -107,15 +114,51 @@ final class AddFlowModel {
             let recordID = UUID().uuidString
             var enriched = match
             if let full = try? await provider.enrich(match) { enriched = full }
-            // Prefer the user's cover source (Apple by default), then the others.
-            let coverURL = await CoverArtResolver.bestURL(
-                artist: enriched.artistDisplay,
-                title: enriched.title,
-                barcode: enriched.barcode,
-                musicbrainzMBID: enriched.musicbrainzMBID,
-                discogsFallback: enriched.coverImageURL)
-            let cover = await downloadCover(url: coverURL, recordID: recordID)
-            draft = RecordDetail.draft(from: enriched, id: recordID, coverPath: cover.path, thumbPath: cover.thumb)
+
+            if UserDefaults.standard.bool(forKey: CoverArtResolver.pickCoverOnImportKey) {
+                let candidates = await CoverArtResolver.candidates(
+                    artist: enriched.artistDisplay,
+                    title: enriched.title,
+                    barcode: enriched.barcode,
+                    musicbrainzMBID: enriched.musicbrainzMBID,
+                    discogsFallback: enriched.coverImageURL)
+                if candidates.isEmpty {
+                    draft = RecordDetail.draft(from: enriched, id: recordID)
+                    phase = .idle
+                    path.append(.form)
+                } else {
+                    pendingMatch = enriched
+                    pendingRecordID = recordID
+                    coverCandidates = candidates
+                    phase = .idle
+                    path.append(.coverPicker)
+                }
+            } else {
+                // Prefer the user's cover source (Apple by default), then the others.
+                let coverURL = await CoverArtResolver.bestURL(
+                    artist: enriched.artistDisplay,
+                    title: enriched.title,
+                    barcode: enriched.barcode,
+                    musicbrainzMBID: enriched.musicbrainzMBID,
+                    discogsFallback: enriched.coverImageURL)
+                let cover = await downloadCover(url: coverURL, recordID: recordID)
+                draft = RecordDetail.draft(from: enriched, id: recordID, coverPath: cover.path, thumbPath: cover.thumb)
+                phase = .idle
+                path.append(.form)
+            }
+        }
+    }
+
+    /// Called from the cover picker; nil means "no cover".
+    func selectCover(_ candidate: CoverCandidate?) {
+        guard let match = pendingMatch, let recordID = pendingRecordID, phase != .searching else { return }
+        phase = .searching
+        Task {
+            var cover: (path: String?, thumb: String?) = (nil, nil)
+            if let candidate {
+                cover = await downloadCover(url: candidate.url, recordID: recordID)
+            }
+            draft = RecordDetail.draft(from: match, id: recordID, coverPath: cover.path, thumbPath: cover.thumb)
             phase = .idle
             path.append(.form)
         }
