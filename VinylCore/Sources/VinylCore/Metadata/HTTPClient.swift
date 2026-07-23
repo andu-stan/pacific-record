@@ -3,10 +3,18 @@ import Foundation
 import FoundationNetworking
 #endif
 
-/// A minimal seam over HTTP GET so the metadata clients can be unit-tested
-/// offline: production uses `URLSessionHTTPClient`, tests inject a stub.
+/// A minimal seam over HTTP so the metadata clients can be unit-tested offline:
+/// production uses `URLSessionHTTPClient`, tests inject a stub. The primitive is
+/// the general request; `data(from:headers:)` is a GET convenience.
 public protocol HTTPClient: Sendable {
-    func data(from url: URL, headers: [String: String]) async throws -> Data
+    func data(from url: URL, method: String, body: Data?, headers: [String: String]) async throws -> Data
+}
+
+public extension HTTPClient {
+    /// GET convenience used by the read-only metadata lookups.
+    func data(from url: URL, headers: [String: String]) async throws -> Data {
+        try await data(from: url, method: "GET", body: nil, headers: headers)
+    }
 }
 
 /// `HTTPClient` backed by `URLSession`.
@@ -17,9 +25,10 @@ public struct URLSessionHTTPClient: HTTPClient {
         self.session = session
     }
 
-    public func data(from url: URL, headers: [String: String]) async throws -> Data {
+    public func data(from url: URL, method: String, body: Data?, headers: [String: String]) async throws -> Data {
         var request = URLRequest(url: url)
-        request.httpMethod = "GET"
+        request.httpMethod = method
+        request.httpBody = body
         for (field, value) in headers {
             request.setValue(value, forHTTPHeaderField: field)
         }

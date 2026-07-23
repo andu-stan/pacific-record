@@ -80,6 +80,21 @@ final class DiscogsClientTests: XCTestCase {
         XCTAssertNil(bt.mediaCondition)                 // no notes → blank
     }
 
+    func testAddToCollectionParsesInstanceID() async throws {
+        let json = Data(#"{"instance_id": 999, "resource_url": "x"}"#.utf8)
+        let id = try await client { _ in json }.addToCollection(username: "u", releaseID: 249504)
+        XCTAssertEqual(id, 999)
+    }
+
+    func testCollectionContainsReflectsItemCount() async throws {
+        let present = Data(#"{"pagination":{"page":1,"pages":1,"items":1},"releases":[{"instance_id":1}]}"#.utf8)
+        let absent = Data(#"{"pagination":{"page":1,"pages":1,"items":0},"releases":[]}"#.utf8)
+        let has = try await client { _ in present }.collectionContains(username: "u", releaseID: 1)
+        let hasNot = try await client { _ in absent }.collectionContains(username: "u", releaseID: 1)
+        XCTAssertTrue(has)
+        XCTAssertFalse(hasNot)
+    }
+
     func testDurationParsing() {
         XCTAssertEqual(DiscogsClient.parseDuration("9:22"), 562)
         XCTAssertEqual(DiscogsClient.parseDuration("1:02:03"), 3723)

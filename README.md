@@ -128,6 +128,14 @@ To enable it once you have a **paid Apple Developer** team:
     rating, and media/sleeve grades when set as Discogs custom fields — while
     **skipping releases already saved**, so it doubles as a re-sync. Progress
     is shown live and the import can be stopped mid-run.
+  - **Sync back to Discogs** — records added in the app can be pushed to the
+    user's Discogs collection (only ones linked to a Discogs release — scanned
+    or searched, not manual entries). Two ways, both opt-in and de-duplicated:
+    a Settings toggle to add every new record automatically, and an **Add to
+    Discogs collection** button on the record detail screen. It checks the
+    collection first to avoid duplicate instances and also pushes the star
+    rating. Backed by write endpoints on `DiscogsClient` (the HTTP seam gained
+    POST support).
 
 See the roadmap in [`docs/PLAN.md`](docs/PLAN.md).
 

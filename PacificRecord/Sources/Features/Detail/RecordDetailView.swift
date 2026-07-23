@@ -45,6 +45,8 @@ struct RecordDetailScreen: View {
     @State private var estimate: StoredValue?
     @State private var isEstimating = false
     @State private var didLoadEstimate = false
+    @State private var isSyncing = false
+    @State private var syncOutcome: DiscogsSyncOutcome?
 
     var body: some View {
         Group {
@@ -55,6 +57,10 @@ struct RecordDetailScreen: View {
                     isEstimating: isEstimating,
                     canEstimate: detail.release.discogsReleaseID != nil,
                     locationName: model.location(id: detail.release.locationID)?.name,
+                    canAddToDiscogs: detail.release.discogsReleaseID != nil,
+                    isSyncing: isSyncing,
+                    syncOutcome: syncOutcome,
+                    onAddToDiscogs: { addToDiscogs(detail.release) },
                     onEstimate: { estimateValue(detail.release) },
                     onDelete: { confirmDelete = true }
                 )
@@ -106,6 +112,20 @@ struct RecordDetailScreen: View {
             isEstimating = false
         }
     }
+
+    private func addToDiscogs(_ release: Release) {
+        guard !isSyncing else { return }
+        isSyncing = true
+        Task {
+            let outcome = await DiscogsCollectionSync.push(release)
+            syncOutcome = outcome
+            isSyncing = false
+            switch outcome {
+            case .added, .alreadyInCollection: Haptics.success()
+            case .failed, .notLinked: Haptics.warning()
+            }
+        }
+    }
 }
 
 struct RecordDetailContent: View {
@@ -114,6 +134,10 @@ struct RecordDetailContent: View {
     var isEstimating: Bool
     var canEstimate: Bool
     var locationName: String? = nil
+    var canAddToDiscogs: Bool = false
+    var isSyncing: Bool = false
+    var syncOutcome: DiscogsSyncOutcome?
+    var onAddToDiscogs: () -> Void = {}
     var onEstimate: () -> Void
     var onDelete: () -> Void
 
@@ -150,6 +174,7 @@ struct RecordDetailContent: View {
                     infoCard
                     conditionCards
                     if value != nil || canEstimate { valueSection }
+                    if canAddToDiscogs { discogsSection }
                     if !detail.tracks.isEmpty { tracklist }
                     if let notes = release.notes, !notes.isEmpty { notesCard(notes) }
                     deleteButton
@@ -275,6 +300,52 @@ struct RecordDetailContent: View {
             parts.append("updated " + date.formatted(date: .abbreviated, time: .omitted))
         }
         return parts.joined(separator: " · ")
+    }
+
+    // MARK: Discogs sync
+
+    private var isInCollection: Bool {
+        syncOutcome == .added || syncOutcome == .alreadyInCollection
+    }
+
+    private var discogsSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Discogs")
+                .font(.prSection)
+                .foregroundStyle(Palette.label)
+            GroupedCard(radius: 14, padding: EdgeInsets(top: 14, leading: 16, bottom: 14, trailing: 16)) {
+                if isInCollection {
+                    HStack(spacing: 8) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 17)).foregroundStyle(Palette.positive)
+                        Text(syncOutcome == .added ? "Added to your Discogs collection" : "Already in your Discogs collection")
+                            .font(.prBodyEmphasis).foregroundStyle(Palette.label)
+                        Spacer()
+                    }
+                } else {
+                    Button(action: onAddToDiscogs) {
+                        HStack(spacing: 8) {
+                            if isSyncing {
+                                ProgressView().controlSize(.small)
+                            } else {
+                                Image(systemName: "arrow.up.circle").font(.system(size: 17, weight: .semibold))
+                            }
+                            Text(isSyncing ? "Adding…" : "Add to Discogs collection")
+                                .font(.prBodyEmphasis)
+                            Spacer()
+                        }
+                        .foregroundStyle(Palette.tint)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(isSyncing)
+                }
+            }
+            if case .failed(let message)? = syncOutcome {
+                Text(message)
+                    .font(.prSmall).foregroundStyle(Palette.danger)
+                    .padding(.horizontal, 4)
+            }
+        }
     }
 
     // MARK: Tracklist

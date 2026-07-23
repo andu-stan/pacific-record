@@ -214,6 +214,39 @@ public struct DiscogsClient: MetadataProvider {
         return CollectionEntry(match: match, rating: rating, mediaCondition: media, sleeveCondition: sleeve)
     }
 
+    // MARK: - Collection writes
+
+    /// True if the release is already in the user's collection (any folder), so
+    /// sync-back can avoid creating duplicate instances.
+    public func collectionContains(username: String, releaseID: Int) async throws -> Bool {
+        await limiter.waitForTurn()
+        let url = baseURL.appendingPathComponent("users/\(username)/collection/releases/\(releaseID)")
+        let data = try await http.data(from: url, headers: headers)
+        return try Self.decoder.decode(DiscogsCollectionReleaseLookup.self, from: data).pagination.items > 0
+    }
+
+    /// Adds a release to the user's collection (folder 1 = "Uncategorized" by
+    /// default) and returns the new instance id. Requires a token with write
+    /// access (a personal access token has it).
+    @discardableResult
+    public func addToCollection(username: String, releaseID: Int, folderID: Int = 1) async throws -> Int {
+        await limiter.waitForTurn()
+        let url = baseURL.appendingPathComponent("users/\(username)/collection/folders/\(folderID)/releases/\(releaseID)")
+        let data = try await http.data(from: url, method: "POST", body: nil, headers: headers)
+        return try Self.decoder.decode(DiscogsAddInstance.self, from: data).instanceId
+    }
+
+    /// Sets the star rating on a collection instance (best-effort).
+    public func setCollectionRating(username: String, releaseID: Int, instanceID: Int, folderID: Int = 1, rating: Int) async throws {
+        await limiter.waitForTurn()
+        let url = baseURL.appendingPathComponent(
+            "users/\(username)/collection/folders/\(folderID)/releases/\(releaseID)/instances/\(instanceID)")
+        let body = try JSONSerialization.data(withJSONObject: ["rating": rating])
+        var writeHeaders = headers
+        writeHeaders["Content-Type"] = "application/json"
+        _ = try await http.data(from: url, method: "POST", body: body, headers: writeHeaders)
+    }
+
     // MARK: - Networking
 
     private func search(queryItems: [URLQueryItem]) async throws -> [MetadataMatch] {
@@ -434,6 +467,14 @@ struct DiscogsFieldsResponse: Decodable {
 struct DiscogsField: Decodable {
     let id: Int
     let name: String?
+}
+
+struct DiscogsAddInstance: Decodable {
+    let instanceId: Int
+}
+
+struct DiscogsCollectionReleaseLookup: Decodable {
+    let pagination: DiscogsPagination
 }
 
 struct DiscogsSearchResult: Decodable {

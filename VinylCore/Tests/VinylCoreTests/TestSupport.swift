@@ -11,7 +11,7 @@ struct StubHTTPClient: HTTPClient {
         self.handler = handler
     }
 
-    func data(from url: URL, headers: [String: String]) async throws -> Data {
+    func data(from url: URL, method: String, body: Data?, headers: [String: String]) async throws -> Data {
         handler(url)
     }
 }

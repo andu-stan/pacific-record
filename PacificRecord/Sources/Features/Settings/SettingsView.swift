@@ -8,6 +8,7 @@ struct SettingsView: View {
     @AppStorage("discogsToken") private var token = ""
     @AppStorage(CoverSource.storageKey) private var coverSourceRaw = CoverSource.appleMusic.rawValue
     @AppStorage(CoverArtResolver.pickCoverOnImportKey) private var pickCoverOnImport = false
+    @AppStorage(DiscogsCollectionSync.autoSyncKey) private var syncToDiscogs = false
     @State private var showTokenEntry = false
     @State private var tokenDraft = ""
 
@@ -90,6 +91,18 @@ struct SettingsView: View {
                     sourceRow(index: 2, name: token.isEmpty ? "—" : "MusicBrainz", divider: false)
                 }
             }
+
+            GroupedCard(radius: 14) {
+                HStack {
+                    Text("Add new records to Discogs").font(.prBody).foregroundStyle(Palette.label)
+                    Spacer()
+                    Toggle("", isOn: $syncToDiscogs).labelsHidden().tint(Palette.accent).disabled(token.isEmpty)
+                }
+                .padding(.vertical, 6)
+            }
+            Text("When on, records you add from a scan or search are added to your Discogs collection (skipping any already there). Manual entries and edits aren’t synced.")
+                .font(.prSmall).foregroundStyle(Palette.tertiary)
+                .padding(.horizontal, 4)
         }
     }
 
