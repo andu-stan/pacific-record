@@ -98,6 +98,7 @@ struct CoverArtView: View {
             }
         }
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+        .accessibilityHidden(true)
     }
 
     private var localImage: UIImage? {
@@ -128,5 +129,6 @@ struct RemoteCoverView: View {
             }
         }
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+        .accessibilityHidden(true)
     }
 }

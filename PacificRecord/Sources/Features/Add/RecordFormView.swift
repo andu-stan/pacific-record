@@ -322,6 +322,7 @@ struct RecordFormView: View {
             }
         )
         model.save(detail)
+        Haptics.success()
         finish()
     }
 

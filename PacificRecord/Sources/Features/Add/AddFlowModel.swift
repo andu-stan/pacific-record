@@ -53,6 +53,7 @@ final class AddFlowModel {
         // Only accept a scan while still on the scanner (nothing pushed yet).
         guard !trimmed.isEmpty, phase != .searching, path.isEmpty else { return }
         lastBarcode = trimmed
+        Haptics.impact()
         let provider = provider
         // Barcode results push to the Match screen ("pick the pressing").
         run(push: true) { try await provider.searchByBarcode(trimmed) }
@@ -84,6 +85,7 @@ final class AddFlowModel {
                 let results = try await operation()
                 if results.isEmpty {
                     phase = .empty
+                    Haptics.warning()
                 } else {
                     matches = results
                     phase = .idle
@@ -91,6 +93,7 @@ final class AddFlowModel {
                 }
             } catch {
                 phase = .failed(Self.message(for: error))
+                Haptics.warning()
             }
         }
     }
@@ -145,9 +148,16 @@ final class AddFlowModel {
     static func message(for error: Error) -> String {
         if let error = error as? MetadataError {
             switch error {
-            case let .http(status): return "The lookup service returned an error (HTTP \(status))."
-            case .invalidURL: return "Couldn't build the lookup request."
-            case .noResults: return "No results were returned."
+            case .http(429):
+                return "Discogs is rate-limiting requests. Wait a few seconds and try again."
+            case let .http(status) where status == 401 || status == 403:
+                return "Discogs rejected the request — check your API token in Settings."
+            case let .http(status):
+                return "The lookup service returned an error (HTTP \(status))."
+            case .invalidURL:
+                return "Couldn't build the lookup request."
+            case .noResults:
+                return "No results were returned."
             }
         }
         return (error as NSError).localizedDescription

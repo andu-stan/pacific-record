@@ -83,6 +83,11 @@ falls back to local storage at runtime whenever iCloud is unavailable).
     asynchronously at launch with a graceful **local fallback** when iCloud is
     off. Switchable from Settings; switching copies your library to the new
     location (never deletes).
+  - **Polish (M4)** — app icon (a vinyl record in the brand amber), VoiceOver
+    labels on icon-only controls (covers marked decorative), haptics on scan /
+    save, and friendlier Discogs rate-limit / auth messages. Full Dynamic Type
+    scaling is the remaining accessibility item (deferred to keep the tuned
+    type scale intact).
 
 See the roadmap in [`docs/PLAN.md`](docs/PLAN.md).
 

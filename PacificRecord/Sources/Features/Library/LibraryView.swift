@@ -72,11 +72,13 @@ struct LibraryView: View {
                     Button { showSettings = true } label: {
                         Image(systemName: "gearshape")
                     }
+                    .accessibilityLabel("Settings")
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { showAdd = true } label: {
                         Image(systemName: "plus").fontWeight(.semibold)
                     }
+                    .accessibilityLabel("Add record")
                 }
             }
             .tint(Palette.tint)
@@ -154,6 +156,8 @@ struct LibraryView: View {
                 )
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(layout == .grid ? "Grid view" : "List view")
+        .accessibilityAddTraits(active ? [.isButton, .isSelected] : .isButton)
     }
 }
 

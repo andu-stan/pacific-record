@@ -270,6 +270,7 @@ struct ScannerView: View {
                 .background(overCamera ? Color.black.opacity(0.5) : Palette.grouped, in: Circle())
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("Close")
     }
 
     private func scannerButton(icon: String, label: String) -> some View {
