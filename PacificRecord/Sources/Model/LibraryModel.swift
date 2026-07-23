@@ -84,6 +84,15 @@ final class LibraryModel {
         }
         return totals
     }
+
+    /// Formatted collection total, e.g. "$312.50" (or several, joined, if the
+    /// library mixes currencies).
+    var formattedTotalValue: String {
+        totalValueByCurrency
+            .sorted { $0.key < $1.key }
+            .map { $0.value.formatted(.currency(code: $0.key)) }
+            .joined(separator: " + ")
+    }
 }
 
 extension LibraryStore.SortOrder: CaseIterable {

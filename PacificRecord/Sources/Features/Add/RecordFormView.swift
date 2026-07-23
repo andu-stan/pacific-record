@@ -30,6 +30,7 @@ struct RecordFormView: View {
 
     @Environment(LibraryModel.self) private var model
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.libraryFolderURL) private var libraryFolder
 
     @State private var title: String
     @State private var artist: String
@@ -44,8 +45,11 @@ struct RecordFormView: View {
     @State private var sleeve: Condition?
     @State private var rating: Int
     @State private var notes: String
+    @State private var coverPath: String?
+    @State private var thumbPath: String?
     @State private var newStyle = ""
     @State private var showAddStyle = false
+    @State private var isFetchingCover = false
 
     init(mode: FormMode, onComplete: (() -> Void)? = nil) {
         self.mode = mode
@@ -65,6 +69,8 @@ struct RecordFormView: View {
         _sleeve = State(initialValue: release?.sleeveCondition)
         _rating = State(initialValue: release?.rating ?? 0)
         _notes = State(initialValue: release?.notes ?? "")
+        _coverPath = State(initialValue: release?.coverPath)
+        _thumbPath = State(initialValue: release?.thumbPath)
     }
 
     var body: some View {
@@ -109,15 +115,50 @@ struct RecordFormView: View {
     // MARK: Sections
 
     private var coverHeader: some View {
-        HStack(spacing: 16) {
-            CoverArtView(seed: title.isEmpty ? artist : title, coverPath: mode.initialDetail?.release.coverPath, cornerRadius: 10)
-                .frame(width: 88, height: 88)
-                .shadow(color: .black.opacity(0.5), radius: 8, y: 6)
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Replace cover art").font(.prBodyEmphasis).foregroundStyle(Palette.tint)
-                Text("From photos or Discogs").font(.prSmall).foregroundStyle(Palette.tertiary)
+        Button(action: replaceCover) {
+            HStack(spacing: 16) {
+                ZStack {
+                    CoverArtView(seed: title.isEmpty ? artist : title, coverPath: coverPath, cornerRadius: 10)
+                        .frame(width: 88, height: 88)
+                        .shadow(color: .black.opacity(0.5), radius: 8, y: 6)
+                    if isFetchingCover {
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill(.black.opacity(0.45))
+                            .frame(width: 88, height: 88)
+                        ProgressView().tint(.white)
+                    }
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(isFetchingCover ? "Fetching artwork…" : "Replace cover art")
+                        .font(.prBodyEmphasis).foregroundStyle(Palette.tint)
+                    Text("High-res from Apple Music").font(.prSmall).foregroundStyle(Palette.tertiary)
+                }
+                Spacer()
             }
-            Spacer()
+        }
+        .buttonStyle(.plain)
+        .disabled(isFetchingCover)
+    }
+
+    private func replaceCover() {
+        let artistText = artist.trimmingCharacters(in: .whitespacesAndNewlines)
+        let titleText = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !(titleText.isEmpty && artistText.isEmpty), let folder = libraryFolder, !isFetchingCover else { return }
+        isFetchingCover = true
+        Task {
+            if let url = await CoverArtResolver.bestURL(artist: artistText, title: titleText, fallback: nil) {
+                let fileID = "\(mode.initialDetail?.release.id ?? UUID().uuidString)-\(Int(Date().timeIntervalSince1970))"
+                if let result = try? await CoverImageManager().downloadCover(from: url, releaseID: fileID, into: folder) {
+                    coverPath = result.coverPath
+                    thumbPath = result.thumbPath
+                    Haptics.success()
+                } else {
+                    Haptics.warning()
+                }
+            } else {
+                Haptics.warning()
+            }
+            isFetchingCover = false
         }
     }
 
@@ -303,8 +344,8 @@ struct RecordFormView: View {
             barcode: base?.release.barcode,
             discogsReleaseID: base?.release.discogsReleaseID,
             musicbrainzMBID: base?.release.musicbrainzMBID,
-            coverPath: base?.release.coverPath,
-            thumbPath: base?.release.thumbPath,
+            coverPath: coverPath,
+            thumbPath: thumbPath,
             mediaCondition: media,
             sleeveCondition: sleeve,
             rating: rating,

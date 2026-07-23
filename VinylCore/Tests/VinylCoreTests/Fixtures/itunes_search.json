@@ -1,0 +1,15 @@
+{
+  "resultCount": 2,
+  "results": [
+    {
+      "artistName": "Miles Davis",
+      "collectionName": "Kind of Blue",
+      "artworkUrl100": "https://is1-ssl.mzstatic.com/image/thumb/Music/abc/source/100x100bb.jpg"
+    },
+    {
+      "artistName": "Various Artists",
+      "collectionName": "Jazz Classics",
+      "artworkUrl100": "https://is1-ssl.mzstatic.com/image/thumb/Music/xyz/source/100x100bb.jpg"
+    }
+  ]
+}

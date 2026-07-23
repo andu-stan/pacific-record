@@ -107,7 +107,10 @@ final class AddFlowModel {
             let recordID = UUID().uuidString
             var enriched = match
             if let full = try? await provider.enrich(match) { enriched = full }
-            let cover = await downloadCover(enriched, recordID: recordID)
+            // Prefer Apple's clean high-res artwork; fall back to the Discogs scan.
+            let coverURL = await CoverArtResolver.bestURL(
+                artist: enriched.artistDisplay, title: enriched.title, fallback: enriched.coverImageURL)
+            let cover = await downloadCover(url: coverURL, recordID: recordID)
             draft = RecordDetail.draft(from: enriched, id: recordID, coverPath: cover.path, thumbPath: cover.thumb)
             phase = .idle
             path.append(.form)
@@ -135,8 +138,8 @@ final class AddFlowModel {
 
     // MARK: Helpers
 
-    private func downloadCover(_ match: MetadataMatch, recordID: String) async -> (path: String?, thumb: String?) {
-        guard let url = match.coverImageURL else { return (nil, nil) }
+    private func downloadCover(url: URL?, recordID: String) async -> (path: String?, thumb: String?) {
+        guard let url else { return (nil, nil) }
         do {
             let result = try await CoverImageManager().downloadCover(from: url, releaseID: recordID, into: library.libraryFolder)
             return (result.coverPath, result.thumbPath)

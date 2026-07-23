@@ -91,7 +91,11 @@ falls back to local storage at runtime whenever iCloud is unavailable).
   - **Estimated value from Discogs** — the detail screen fetches a record's
     market value (a price suggestion for its media condition when a token is
     set, otherwise the lowest current listing) and lets you refresh it. Stored
-    on the record (schema v2).
+    on the record (schema v2); the Library header shows the collection total.
+  - **High-res cover art** — since Discogs images are user-uploaded scans,
+    imports prefer Apple Music's official artwork (matched by artist + title,
+    upscaled) and fall back to the Discogs image only when there's no confident
+    match. The edit form's cover control re-fetches Apple artwork on demand.
 
 See the roadmap in [`docs/PLAN.md`](docs/PLAN.md).
 

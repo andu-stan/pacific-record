@@ -17,11 +17,18 @@ struct LibraryView: View {
                 } else {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 0) {
-                            Text("\(model.count) records · \(model.artistCount) artists")
-                                .font(.system(size: 15))
-                                .foregroundStyle(Palette.secondary)
-                                .padding(.top, 2)
-                                .padding(.bottom, 14)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("\(model.count) records · \(model.artistCount) artists")
+                                    .font(.system(size: 15))
+                                    .foregroundStyle(Palette.secondary)
+                                if !model.totalValueByCurrency.isEmpty {
+                                    Text("≈ \(model.formattedTotalValue) estimated value")
+                                        .font(.system(size: 13))
+                                        .foregroundStyle(Palette.tertiary)
+                                }
+                            }
+                            .padding(.top, 2)
+                            .padding(.bottom, 14)
 
                             HStack(spacing: 8) {
                                 Image(systemName: "magnifyingglass")
