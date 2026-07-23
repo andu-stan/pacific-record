@@ -5,18 +5,25 @@ import SwiftUI
 struct LaunchView: View {
     var body: some View {
         ZStack {
-            RadialGradient(colors: [Color(hex: 0x2A1C10), Palette.background],
-                           center: .top, startRadius: 20, endRadius: 520)
-                .ignoresSafeArea()
-            VStack(spacing: 22) {
-                VinylMark()
+            // Matches the native launch screen (Info.plist UILaunchScreen), so
+            // the hand-off from the OS launch image is seamless: same background,
+            // same centered logo — the spinner and text just fade in below.
+            Palette.background.ignoresSafeArea()
+            Image("LaunchLogo")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 120, height: 120)
+            VStack {
+                Spacer()
                 ProgressView()
                     .controlSize(.regular)
                     .tint(Palette.accent)
                 Text("Preparing your library…")
                     .font(.prBody)
                     .foregroundStyle(Palette.secondary)
+                    .padding(.top, 14)
             }
+            .padding(.bottom, 48)
         }
     }
 }
