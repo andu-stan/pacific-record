@@ -49,11 +49,4 @@ enum DiscogsCollectionSync {
             return .failed(AddFlowModel.message(for: error))
         }
     }
-
-    /// Fire-and-forget auto-sync used when a new record is saved: only runs when
-    /// the toggle is on and the record is linked to a Discogs release.
-    static func autoSyncIfEnabled(_ release: Release) {
-        guard autoSyncEnabled, release.discogsReleaseID != nil, !token.isEmpty else { return }
-        Task { _ = await push(release) }
-    }
 }

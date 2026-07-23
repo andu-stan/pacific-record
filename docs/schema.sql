@@ -51,7 +51,8 @@ CREATE TABLE release (
     value_currency     TEXT,                    -- ISO currency code, e.g. "USD"
     value_basis        TEXT,                    -- grade ("NM") or "Lowest listing"
     value_updated_at   TEXT,                    -- when the value was last fetched
-    location_id        TEXT                     -- location(id) this record is stored at (schema v3)
+    location_id        TEXT,                    -- location(id) this record is stored at (schema v3)
+    discogs_synced_at  TEXT                     -- when last confirmed in the user's Discogs collection; NULL = not synced (schema v4)
 );
 
 -- -----------------------------------------------------------------------------

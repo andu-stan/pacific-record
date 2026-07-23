@@ -466,7 +466,7 @@ struct RecordFormView: View {
         Haptics.success()
         // Sync brand-new adds (not edits) to Discogs if the user turned it on.
         if mode.editingID == nil {
-            DiscogsCollectionSync.autoSyncIfEnabled(release)
+            model.autoSyncToDiscogs(release)
         }
         finish()
     }

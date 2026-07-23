@@ -80,6 +80,7 @@ final class DiscogsCollectionImporter {
                 for entry in result.items {
                     if Task.isCancelled { finish(.cancelled); return }
                     if let rid = entry.match.discogsReleaseID, existing.contains(rid) {
+                        try? store.markDiscogsSynced(discogsReleaseID: rid) // backfill the synced marker
                         skipped += 1
                         continue
                     }
@@ -110,11 +111,12 @@ final class DiscogsCollectionImporter {
                 failedCovers += 1
             }
         }
-        let detail = RecordDetail.draft(
+        var detail = RecordDetail.draft(
             from: entry.match, id: id,
             coverPath: coverPath, thumbPath: thumbPath,
             mediaCondition: entry.mediaCondition, sleeveCondition: entry.sleeveCondition,
             rating: entry.rating)
+        detail.release.discogsSyncedAt = Date() // imported records are already in the Discogs collection
         try? store.save(detail)
         imported += 1
     }

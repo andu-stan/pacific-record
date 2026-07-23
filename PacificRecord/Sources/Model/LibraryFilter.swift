@@ -11,15 +11,23 @@ struct LibraryFilter: Equatable {
         case location(String) // location id
     }
 
+    /// Discogs sync facet: any, only synced, or only not-yet-synced records.
+    enum SyncStatus: Equatable {
+        case any
+        case synced
+        case notSynced
+    }
+
     var location: LocationChoice = .any
     var genre: String?
     var format: String?
     var mediaCondition: Condition?
     /// Minimum star rating; 0 means "any".
     var minRating: Int = 0
+    var sync: SyncStatus = .any
 
     var isActive: Bool {
-        location != .any || genre != nil || format != nil || mediaCondition != nil || minRating > 0
+        location != .any || genre != nil || format != nil || mediaCondition != nil || minRating > 0 || sync != .any
     }
 
     /// How many facets are set — shown as a badge on the Filter control.
@@ -30,6 +38,7 @@ struct LibraryFilter: Equatable {
         if format != nil { count += 1 }
         if mediaCondition != nil { count += 1 }
         if minRating > 0 { count += 1 }
+        if sync != .any { count += 1 }
         return count
     }
 
@@ -46,6 +55,11 @@ struct LibraryFilter: Equatable {
         if let format, release.format != format { return false }
         if let mediaCondition, release.mediaCondition != mediaCondition { return false }
         if minRating > 0, release.rating < minRating { return false }
+        switch sync {
+        case .any: break
+        case .synced: if release.discogsSyncedAt == nil { return false }
+        case .notSynced: if release.discogsSyncedAt != nil { return false }
+        }
         return true
     }
 }

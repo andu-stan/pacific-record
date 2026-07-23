@@ -111,6 +111,29 @@ final class LibraryModel {
         }
     }
 
+    // MARK: Discogs sync-back
+
+    /// Pushes a record to the user's Discogs collection and, on success (added or
+    /// already there), persists the synced marker so the filter reflects it.
+    @discardableResult
+    func syncToDiscogs(_ release: Release) async -> DiscogsSyncOutcome {
+        let outcome = await DiscogsCollectionSync.push(release)
+        switch outcome {
+        case .added, .alreadyInCollection:
+            try? store.setDiscogsSynced(id: release.id)
+            reload()
+        case .failed, .notLinked:
+            break
+        }
+        return outcome
+    }
+
+    /// Fire-and-forget auto-sync for a freshly added record when the toggle is on.
+    func autoSyncToDiscogs(_ release: Release) {
+        guard DiscogsCollectionSync.autoSyncEnabled, release.discogsReleaseID != nil else { return }
+        Task { await syncToDiscogs(release) }
+    }
+
     func setValue(amount: Double, currency: String, basis: String, for release: Release) {
         var updated = release
         updated.estimatedValue = amount

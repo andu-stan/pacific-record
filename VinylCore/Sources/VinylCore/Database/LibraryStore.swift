@@ -148,6 +148,13 @@ public final class LibraryStore {
             try db.execute(sql: "UPDATE library_meta SET value = ? WHERE key = ?", arguments: ["3", "schema_version"])
         }
 
+        migrator.registerMigration("v4") { db in
+            try db.alter(table: "release") { t in
+                t.add(column: "discogs_synced_at", .datetime)
+            }
+            try db.execute(sql: "UPDATE library_meta SET value = ? WHERE key = ?", arguments: ["4", "schema_version"])
+        }
+
         return migrator
     }
 
@@ -343,6 +350,30 @@ public final class LibraryStore {
             for id in ids {
                 _ = try Release.deleteOne(db, key: id)
                 try db.execute(sql: "DELETE FROM release_fts WHERE release_uuid = ?", arguments: [id])
+            }
+        }
+    }
+
+    /// Marks a record as present in the user's Discogs collection. Written via
+    /// the record path so the date encodes exactly like the other timestamps.
+    public func setDiscogsSynced(id: String, at date: Date = Date()) throws {
+        try dbQueue.write { db in
+            guard var release = try Release.fetchOne(db, key: id) else { return }
+            release.discogsSyncedAt = date
+            try release.update(db)
+        }
+    }
+
+    /// Backfills the synced marker for the record with this Discogs release id,
+    /// if not already set — used when (re-)importing a collection.
+    public func markDiscogsSynced(discogsReleaseID: Int, at date: Date = Date()) throws {
+        try dbQueue.write { db in
+            let releases = try Release.fetchAll(
+                db, sql: "SELECT * FROM release WHERE discogs_release_id = ? AND discogs_synced_at IS NULL",
+                arguments: [discogsReleaseID])
+            for var release in releases {
+                release.discogsSyncedAt = date
+                try release.update(db)
             }
         }
     }

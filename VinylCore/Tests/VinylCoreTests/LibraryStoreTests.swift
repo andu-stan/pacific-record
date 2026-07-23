@@ -110,6 +110,26 @@ final class LibraryStoreTests: XCTestCase {
         XCTAssertEqual(try store.search("T0").count, 0) // FTS rows removed
     }
 
+    func testDiscogsSyncedMarker() throws {
+        let store = try makeTempStore()
+        let id = UUID().uuidString
+        var detail = sampleDetail(id: id, title: "X", artist: "Y")
+        detail.release.discogsReleaseID = 12345
+        try store.save(detail)
+        XCTAssertNil(try store.detail(id: id)?.release.discogsSyncedAt) // not synced initially
+
+        try store.setDiscogsSynced(id: id)
+        XCTAssertNotNil(try store.detail(id: id)?.release.discogsSyncedAt)
+
+        // markDiscogsSynced backfills by Discogs id (only when currently null).
+        let id2 = UUID().uuidString
+        var other = sampleDetail(id: id2, title: "Z", artist: "W")
+        other.release.discogsReleaseID = 999
+        try store.save(other)
+        try store.markDiscogsSynced(discogsReleaseID: 999)
+        XCTAssertNotNil(try store.detail(id: id2)?.release.discogsSyncedAt)
+    }
+
     func testGenreAndFormatFacets() throws {
         let store = try makeTempStore()
         var jazzLP = sampleDetail(title: "A", artist: "X")

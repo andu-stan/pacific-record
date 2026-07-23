@@ -38,6 +38,9 @@ public struct Release: Codable, FetchableRecord, PersistableRecord, Identifiable
     public var valueUpdatedAt: Date?
     /// The location (shelf/room/country/…) this record is stored at.
     public var locationID: String?
+    /// When this record was last confirmed in the user's Discogs collection
+    /// (imported from it, or pushed to it). Nil means "not synced".
+    public var discogsSyncedAt: Date?
 
     public static let databaseTableName = "release"
 
@@ -68,6 +71,7 @@ public struct Release: Codable, FetchableRecord, PersistableRecord, Identifiable
         case valueBasis = "value_basis"
         case valueUpdatedAt = "value_updated_at"
         case locationID = "location_id"
+        case discogsSyncedAt = "discogs_synced_at"
     }
 
     public init(
@@ -96,7 +100,8 @@ public struct Release: Codable, FetchableRecord, PersistableRecord, Identifiable
         valueCurrency: String? = nil,
         valueBasis: String? = nil,
         valueUpdatedAt: Date? = nil,
-        locationID: String? = nil
+        locationID: String? = nil,
+        discogsSyncedAt: Date? = nil
     ) {
         self.id = id
         self.title = title
@@ -124,6 +129,7 @@ public struct Release: Codable, FetchableRecord, PersistableRecord, Identifiable
         self.valueBasis = valueBasis
         self.valueUpdatedAt = valueUpdatedAt
         self.locationID = locationID
+        self.discogsSyncedAt = discogsSyncedAt
     }
 }
 

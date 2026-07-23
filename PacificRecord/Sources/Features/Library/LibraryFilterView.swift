@@ -19,6 +19,8 @@ struct LibraryFilterView: View {
                         formatRow
                         HRule()
                         conditionRow
+                        HRule()
+                        syncRow
                     }
                 }
                 ratingSection
@@ -90,6 +92,22 @@ struct LibraryFilterView: View {
                     model.filter.mediaCondition = condition
                 }
             }
+        }
+    }
+
+    private var syncRow: some View {
+        menuRow("Discogs", value: syncValue) {
+            checkItem("Any", isOn: model.filter.sync == .any) { model.filter.sync = .any }
+            checkItem("Synced", isOn: model.filter.sync == .synced) { model.filter.sync = .synced }
+            checkItem("Not synced", isOn: model.filter.sync == .notSynced) { model.filter.sync = .notSynced }
+        }
+    }
+
+    private var syncValue: String {
+        switch model.filter.sync {
+        case .any: return "Any"
+        case .synced: return "Synced"
+        case .notSynced: return "Not synced"
         }
     }
 

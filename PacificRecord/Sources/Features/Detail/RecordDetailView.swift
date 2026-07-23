@@ -69,6 +69,9 @@ struct RecordDetailScreen: View {
                         estimate = StoredValue(release: detail.release)
                         didLoadEstimate = true
                     }
+                    if syncOutcome == nil, detail.release.discogsSyncedAt != nil {
+                        syncOutcome = .alreadyInCollection
+                    }
                 }
                 .sheet(isPresented: $showEdit) {
                     NavigationStack { RecordFormView(mode: .edit(detail)) }
@@ -117,7 +120,7 @@ struct RecordDetailScreen: View {
         guard !isSyncing else { return }
         isSyncing = true
         Task {
-            let outcome = await DiscogsCollectionSync.push(release)
+            let outcome = await model.syncToDiscogs(release)
             syncOutcome = outcome
             isSyncing = false
             switch outcome {
