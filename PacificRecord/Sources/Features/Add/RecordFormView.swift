@@ -310,7 +310,11 @@ struct RecordFormView: View {
             rating: rating,
             notes: notes.isEmpty ? nil : notes,
             addedAt: base?.release.addedAt ?? Date(),
-            updatedAt: Date()
+            updatedAt: Date(),
+            estimatedValue: base?.release.estimatedValue,
+            valueCurrency: base?.release.valueCurrency,
+            valueBasis: base?.release.valueBasis,
+            valueUpdatedAt: base?.release.valueUpdatedAt
         )
         let detail = RecordDetail(
             release: release,

@@ -122,6 +122,16 @@ public final class LibraryStore {
             )
         }
 
+        migrator.registerMigration("v2") { db in
+            try db.alter(table: "release") { t in
+                t.add(column: "estimated_value", .double)
+                t.add(column: "value_currency", .text)
+                t.add(column: "value_basis", .text)
+                t.add(column: "value_updated_at", .datetime)
+            }
+            try db.execute(sql: "UPDATE library_meta SET value = ? WHERE key = ?", arguments: ["2", "schema_version"])
+        }
+
         return migrator
     }
 

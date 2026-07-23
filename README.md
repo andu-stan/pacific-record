@@ -88,6 +88,10 @@ falls back to local storage at runtime whenever iCloud is unavailable).
     save, and friendlier Discogs rate-limit / auth messages. Full Dynamic Type
     scaling is the remaining accessibility item (deferred to keep the tuned
     type scale intact).
+  - **Estimated value from Discogs** — the detail screen fetches a record's
+    market value (a price suggestion for its media condition when a token is
+    set, otherwise the lowest current listing) and lets you refresh it. Stored
+    on the record (schema v2).
 
 See the roadmap in [`docs/PLAN.md`](docs/PLAN.md).
 

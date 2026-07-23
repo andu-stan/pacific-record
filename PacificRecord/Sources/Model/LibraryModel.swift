@@ -63,6 +63,27 @@ final class LibraryModel {
         try? store.delete(id: release.id)
         reload()
     }
+
+    func setValue(amount: Double, currency: String, basis: String, for release: Release) {
+        var updated = release
+        updated.estimatedValue = amount
+        updated.valueCurrency = currency
+        updated.valueBasis = basis
+        updated.valueUpdatedAt = Date()
+        try? store.update(updated)
+        reload()
+    }
+
+    /// Sum of every record's estimated value, grouped by currency.
+    var totalValueByCurrency: [String: Double] {
+        var totals: [String: Double] = [:]
+        for record in records {
+            if let amount = record.estimatedValue, let currency = record.valueCurrency {
+                totals[currency, default: 0] += amount
+            }
+        }
+        return totals
+    }
 }
 
 extension LibraryStore.SortOrder: CaseIterable {

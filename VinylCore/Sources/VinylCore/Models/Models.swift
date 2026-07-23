@@ -30,6 +30,12 @@ public struct Release: Codable, FetchableRecord, PersistableRecord, Identifiable
     public var notes: String?
     public var addedAt: Date
     public var updatedAt: Date
+    /// Estimated market value (from Discogs), if fetched.
+    public var estimatedValue: Double?
+    public var valueCurrency: String?
+    /// What the value is based on: a Goldmine grade ("NM") or "Lowest listing".
+    public var valueBasis: String?
+    public var valueUpdatedAt: Date?
 
     public static let databaseTableName = "release"
 
@@ -55,6 +61,10 @@ public struct Release: Codable, FetchableRecord, PersistableRecord, Identifiable
         case notes
         case addedAt = "added_at"
         case updatedAt = "updated_at"
+        case estimatedValue = "estimated_value"
+        case valueCurrency = "value_currency"
+        case valueBasis = "value_basis"
+        case valueUpdatedAt = "value_updated_at"
     }
 
     public init(
@@ -78,7 +88,11 @@ public struct Release: Codable, FetchableRecord, PersistableRecord, Identifiable
         rating: Int = 0,
         notes: String? = nil,
         addedAt: Date = Date(),
-        updatedAt: Date = Date()
+        updatedAt: Date = Date(),
+        estimatedValue: Double? = nil,
+        valueCurrency: String? = nil,
+        valueBasis: String? = nil,
+        valueUpdatedAt: Date? = nil
     ) {
         self.id = id
         self.title = title
@@ -101,6 +115,10 @@ public struct Release: Codable, FetchableRecord, PersistableRecord, Identifiable
         self.notes = notes
         self.addedAt = addedAt
         self.updatedAt = updatedAt
+        self.estimatedValue = estimatedValue
+        self.valueCurrency = valueCurrency
+        self.valueBasis = valueBasis
+        self.valueUpdatedAt = valueUpdatedAt
     }
 }
 

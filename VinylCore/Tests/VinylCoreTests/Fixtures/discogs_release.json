@@ -11,6 +11,8 @@
     { "name": "Vinyl", "qty": "1", "descriptions": ["LP", "Album", "45 RPM"] }
   ],
   "identifiers": [{ "type": "Barcode", "value": "888880000001" }],
+  "lowest_price": 24.99,
+  "num_for_sale": 12,
   "images": [
     { "type": "secondary", "uri": "https://img.discogs.com/back.jpg", "uri150": "https://img.discogs.com/back150.jpg" },
     { "type": "primary", "uri": "https://img.discogs.com/front-hires.jpg", "uri150": "https://img.discogs.com/front150.jpg" }

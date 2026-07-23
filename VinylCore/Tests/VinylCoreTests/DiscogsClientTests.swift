@@ -52,4 +52,32 @@ final class DiscogsClientTests: XCTestCase {
     func testArtistDisambiguationSuffixIsStripped() {
         XCTAssertEqual(DiscogsClient.cleanArtistNames(["Nirvana (2)", "Miles Davis"]), ["Nirvana", "Miles Davis"])
     }
+
+    func testPriceSuggestionsParsing() async throws {
+        let data = try Fixture.data("discogs_price_suggestions")
+        let suggestions = try await client { _ in data }.priceSuggestions(releaseID: 249504)
+
+        XCTAssertEqual(suggestions.count, 8)
+        XCTAssertEqual(suggestions[.nearMint]?.amount, 42.0)
+        XCTAssertEqual(suggestions[.nearMint]?.currency, "USD")
+        XCTAssertEqual(suggestions[.veryGoodPlus]?.amount, 30.0)
+        XCTAssertEqual(suggestions[.mint]?.amount, 60.0)
+    }
+
+    func testLowestListingPrice() async throws {
+        let release = try Fixture.data("discogs_release")
+        let money = try await client { _ in release }.lowestListingPrice(releaseID: 249504)
+        XCTAssertEqual(money?.amount, 24.99)
+        XCTAssertEqual(money?.currency, "USD")
+    }
+
+    func testConditionFromDiscogsPriceKey() {
+        XCTAssertEqual(Condition(discogsPriceKey: "Near Mint (NM or M-)"), .nearMint)
+        XCTAssertEqual(Condition(discogsPriceKey: "Mint (M)"), .mint)
+        XCTAssertEqual(Condition(discogsPriceKey: "Very Good Plus (VG+)"), .veryGoodPlus)
+        XCTAssertEqual(Condition(discogsPriceKey: "Very Good (VG)"), .veryGood)
+        XCTAssertEqual(Condition(discogsPriceKey: "Good Plus (G+)"), .goodPlus)
+        XCTAssertEqual(Condition(discogsPriceKey: "Good (G)"), .good)
+        XCTAssertNil(Condition(discogsPriceKey: "Sealed"))
+    }
 }

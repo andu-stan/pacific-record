@@ -46,7 +46,11 @@ CREATE TABLE release (
     rating             INTEGER DEFAULT 0,       -- 0..5
     notes              TEXT,
     added_at           TEXT NOT NULL,           -- ISO-8601
-    updated_at         TEXT NOT NULL            -- ISO-8601
+    updated_at         TEXT NOT NULL,           -- ISO-8601
+    estimated_value    REAL,                    -- market value from Discogs (schema v2)
+    value_currency     TEXT,                    -- ISO currency code, e.g. "USD"
+    value_basis        TEXT,                    -- grade ("NM") or "Lowest listing"
+    value_updated_at   TEXT                     -- when the value was last fetched
 );
 
 -- -----------------------------------------------------------------------------

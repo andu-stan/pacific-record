@@ -27,11 +27,16 @@ public struct DiscogsClient: MetadataProvider {
     }
 
     private var headers: [String: String] {
-        [
-            "Authorization": "Discogs token=\(token)",
+        var headers = [
             "User-Agent": userAgent,
             "Accept": "application/json",
         ]
+        // Unauthenticated requests still work for public reads (release, search)
+        // at a lower rate limit; price suggestions require a token.
+        if !token.isEmpty {
+            headers["Authorization"] = "Discogs token=\(token)"
+        }
+        return headers
     }
 
     private static let decoder: JSONDecoder = {
@@ -39,6 +44,8 @@ public struct DiscogsClient: MetadataProvider {
         decoder.keyDecodingStrategy = .convertFromSnakeCase
         return decoder
     }()
+
+    private static let plainDecoder = JSONDecoder()
 
     // MARK: - MetadataProvider
 
@@ -63,6 +70,35 @@ public struct DiscogsClient: MetadataProvider {
         let data = try await http.data(from: url, headers: headers)
         let detail = try Self.decoder.decode(DiscogsReleaseDetail.self, from: data)
         return Self.map(detail: detail, fallback: match)
+    }
+
+    // MARK: - Marketplace value
+
+    /// Suggested sale prices per Goldmine condition. Requires a token with
+    /// marketplace access; returns an empty dictionary if none are available.
+    public func priceSuggestions(releaseID: Int) async throws -> [Condition: Money] {
+        await limiter.waitForTurn()
+        let url = baseURL.appendingPathComponent("marketplace/price_suggestions/\(releaseID)")
+        let data = try await http.data(from: url, headers: headers)
+        let raw = try Self.plainDecoder.decode([String: DiscogsPriceSuggestion].self, from: data)
+        var result: [Condition: Money] = [:]
+        for (key, price) in raw {
+            if let condition = Condition(discogsPriceKey: key) {
+                result[condition] = Money(amount: price.value, currency: price.currency)
+            }
+        }
+        return result
+    }
+
+    /// The lowest current marketplace listing for a release (any condition),
+    /// read from the release resource. Works unauthenticated.
+    public func lowestListingPrice(releaseID: Int) async throws -> Money? {
+        await limiter.waitForTurn()
+        let url = baseURL.appendingPathComponent("releases/\(releaseID)")
+        let data = try await http.data(from: url, headers: headers)
+        let detail = try Self.decoder.decode(DiscogsReleaseDetail.self, from: data)
+        guard let price = detail.lowestPrice else { return nil }
+        return Money(amount: price, currency: "USD")
     }
 
     // MARK: - Networking
@@ -230,6 +266,13 @@ struct DiscogsReleaseDetail: Decodable {
     let identifiers: [DiscogsIdentifier]?
     let images: [DiscogsImage]?
     let tracklist: [DiscogsTrack]?
+    let lowestPrice: Double?
+    let numForSale: Int?
+}
+
+struct DiscogsPriceSuggestion: Decodable {
+    let currency: String
+    let value: Double
 }
 
 struct DiscogsArtist: Decodable {

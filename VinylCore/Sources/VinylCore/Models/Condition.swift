@@ -40,4 +40,20 @@ public enum Condition: String, Codable, CaseIterable, Sendable, Equatable {
         case .poor: return 1
         }
     }
+
+    /// Maps a Discogs price-suggestion key (e.g. "Near Mint (NM or M-)") to a
+    /// grade. Order matters — "Near Mint" contains "Mint", "Very Good Plus"
+    /// contains "Very Good", etc.
+    public init?(discogsPriceKey key: String) {
+        let text = key.lowercased()
+        if text.contains("near mint") { self = .nearMint }
+        else if text.contains("mint") { self = .mint }
+        else if text.contains("very good plus") || text.contains("(vg+") { self = .veryGoodPlus }
+        else if text.contains("very good") { self = .veryGood }
+        else if text.contains("good plus") || text.contains("(g+") { self = .goodPlus }
+        else if text.contains("good") { self = .good }
+        else if text.contains("fair") { self = .fair }
+        else if text.contains("poor") { self = .poor }
+        else { return nil }
+    }
 }

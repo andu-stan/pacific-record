@@ -12,6 +12,17 @@ public enum MetadataError: Error, Equatable {
     case noResults
 }
 
+/// A monetary amount in a given ISO currency (e.g. Discogs price data).
+public struct Money: Sendable, Equatable {
+    public var amount: Double
+    public var currency: String
+
+    public init(amount: Double, currency: String) {
+        self.amount = amount
+        self.currency = currency
+    }
+}
+
 /// A single track from an online lookup (pre-persistence, no database id).
 public struct TrackInfo: Sendable, Equatable {
     public var position: String?

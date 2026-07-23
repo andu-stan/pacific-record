@@ -1,20 +1,68 @@
 import SwiftUI
 import VinylCore
 
+/// A record's persisted value, formatted for display.
+struct StoredValue: Equatable {
+    var amount: Double
+    var currency: String
+    var basis: String
+    var date: Date?
+
+    init(amount: Double, currency: String, basis: String, date: Date?) {
+        self.amount = amount
+        self.currency = currency
+        self.basis = basis
+        self.date = date
+    }
+
+    init?(release: Release) {
+        guard let amount = release.estimatedValue, let currency = release.valueCurrency else { return nil }
+        self.amount = amount
+        self.currency = currency
+        self.basis = release.valueBasis ?? ""
+        self.date = release.valueUpdatedAt
+    }
+
+    var formattedAmount: String {
+        amount.formatted(.currency(code: currency))
+    }
+
+    /// "Near Mint copy" / "Lowest listing" for the subtitle.
+    var basisLabel: String {
+        if let condition = Condition(rawValue: basis) {
+            return "\(condition.displayName) copy"
+        }
+        return basis
+    }
+}
+
 struct RecordDetailScreen: View {
     let recordID: String
     @Environment(LibraryModel.self) private var model
     @Environment(\.dismiss) private var dismiss
     @State private var showEdit = false
     @State private var confirmDelete = false
+    @State private var estimate: StoredValue?
+    @State private var isEstimating = false
+    @State private var didLoadEstimate = false
 
     var body: some View {
         Group {
             if let detail = model.detail(id: recordID) {
                 RecordDetailContent(
                     detail: detail,
+                    value: estimate,
+                    isEstimating: isEstimating,
+                    canEstimate: detail.release.discogsReleaseID != nil,
+                    onEstimate: { estimateValue(detail.release) },
                     onDelete: { confirmDelete = true }
                 )
+                .onAppear {
+                    if !didLoadEstimate {
+                        estimate = StoredValue(release: detail.release)
+                        didLoadEstimate = true
+                    }
+                }
                 .sheet(isPresented: $showEdit) {
                     NavigationStack { RecordFormView(mode: .edit(detail)) }
                         .tint(Palette.tint)
@@ -42,10 +90,29 @@ struct RecordDetailScreen: View {
         }
         .tint(Palette.tint)
     }
+
+    private func estimateValue(_ release: Release) {
+        guard !isEstimating else { return }
+        isEstimating = true
+        Task {
+            if let result = await RecordValueService.fetch(for: release) {
+                model.setValue(amount: result.amount, currency: result.currency, basis: result.basis, for: release)
+                estimate = StoredValue(amount: result.amount, currency: result.currency, basis: result.basis, date: Date())
+                Haptics.success()
+            } else {
+                Haptics.warning()
+            }
+            isEstimating = false
+        }
+    }
 }
 
 struct RecordDetailContent: View {
     let detail: RecordDetail
+    var value: StoredValue?
+    var isEstimating: Bool
+    var canEstimate: Bool
+    var onEstimate: () -> Void
     var onDelete: () -> Void
 
     private var release: Release { detail.release }
@@ -73,6 +140,7 @@ struct RecordDetailContent: View {
                 VStack(spacing: 16) {
                     infoCard
                     conditionCards
+                    if value != nil || canEstimate { valueSection }
                     if !detail.tracks.isEmpty { tracklist }
                     if let notes = release.notes, !notes.isEmpty { notesCard(notes) }
                     deleteButton
@@ -132,6 +200,68 @@ struct RecordDetailContent: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
+    }
+
+    // MARK: Value
+
+    private var valueSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Value")
+                .font(.prSection)
+                .foregroundStyle(Palette.label)
+            GroupedCard(radius: 14, padding: EdgeInsets(top: 14, leading: 16, bottom: 14, trailing: 16)) {
+                if let value {
+                    HStack(alignment: .center) {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("≈ \(value.formattedAmount)")
+                                .font(.system(size: 22, weight: .bold))
+                                .foregroundStyle(Palette.label)
+                            Text(valueSubtitle(value))
+                                .font(.prSmall)
+                                .foregroundStyle(Palette.secondary)
+                        }
+                        Spacer()
+                        Button(action: onEstimate) {
+                            if isEstimating {
+                                ProgressView().controlSize(.small)
+                            } else {
+                                Image(systemName: "arrow.clockwise")
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundStyle(Palette.tint)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(isEstimating)
+                        .accessibilityLabel("Refresh value")
+                    }
+                } else {
+                    Button(action: onEstimate) {
+                        HStack(spacing: 8) {
+                            if isEstimating {
+                                ProgressView().controlSize(.small)
+                            } else {
+                                Image(systemName: "dollarsign.circle")
+                                    .font(.system(size: 17, weight: .semibold))
+                            }
+                            Text(isEstimating ? "Fetching…" : "Estimate value from Discogs")
+                                .font(.prBodyEmphasis)
+                            Spacer()
+                        }
+                        .foregroundStyle(Palette.tint)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(isEstimating)
+                }
+            }
+        }
+    }
+
+    private func valueSubtitle(_ value: StoredValue) -> String {
+        var parts = [value.basisLabel, "Discogs"]
+        if let date = value.date {
+            parts.append("updated " + date.formatted(date: .abbreviated, time: .omitted))
+        }
+        return parts.joined(separator: " · ")
     }
 
     // MARK: Tracklist
