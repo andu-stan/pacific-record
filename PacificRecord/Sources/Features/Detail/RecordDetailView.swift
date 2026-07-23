@@ -115,6 +115,8 @@ struct RecordDetailContent: View {
     var onEstimate: () -> Void
     var onDelete: () -> Void
 
+    @State private var showCover = false
+
     private var release: Release { detail.release }
 
     var body: some View {
@@ -124,6 +126,11 @@ struct RecordDetailContent: View {
                     .frame(width: 236, height: 236)
                     .shadow(color: .black.opacity(0.85), radius: 30, y: 24)
                     .padding(.top, 6)
+                    .contentShape(Rectangle())
+                    .onTapGesture { showCover = true }
+                    .accessibilityElement()
+                    .accessibilityLabel("Cover — tap to view full screen")
+                    .accessibilityAddTraits(.isButton)
 
                 Text(release.title)
                     .font(.prTitle)
@@ -149,6 +156,9 @@ struct RecordDetailContent: View {
             }
             .padding(.horizontal, Metrics.screenPadding)
             .padding(.bottom, 30)
+        }
+        .fullScreenCover(isPresented: $showCover) {
+            CoverViewer(seed: release.coverSeed, coverPath: release.coverPath)
         }
     }
 
