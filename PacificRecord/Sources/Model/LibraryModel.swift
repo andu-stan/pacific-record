@@ -20,11 +20,13 @@ final class LibraryModel {
     var searchText: String = ""
     var sort: LibraryStore.SortOrder = .artist
     var layout: LibraryLayout = .grid
+    var locations: [Location] = []
 
     init(store: LibraryStore, libraryFolder: URL) {
         self.store = store
         self.libraryFolder = libraryFolder
         reload()
+        reloadLocations()
     }
 
     var count: Int { records.count }
@@ -71,6 +73,46 @@ final class LibraryModel {
         updated.valueBasis = basis
         updated.valueUpdatedAt = Date()
         try? store.update(updated)
+        reload()
+    }
+
+    // MARK: Locations
+
+    func reloadLocations() {
+        locations = (try? store.locations()) ?? []
+    }
+
+    var defaultLocation: Location? { locations.first(where: { $0.isDefault }) }
+
+    func location(id: String?) -> Location? {
+        guard let id else { return nil }
+        return locations.first { $0.id == id }
+    }
+
+    @discardableResult
+    func addLocation(_ name: String) -> Location? {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        let created = try? store.addLocation(name: trimmed)
+        reloadLocations()
+        return created
+    }
+
+    func renameLocation(_ id: String, to name: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        try? store.renameLocation(id: id, name: trimmed)
+        reloadLocations()
+    }
+
+    func setDefaultLocation(_ id: String) {
+        try? store.setDefaultLocation(id: id)
+        reloadLocations()
+    }
+
+    func deleteLocation(_ id: String) {
+        try? store.deleteLocation(id: id)
+        reloadLocations()
         reload()
     }
 

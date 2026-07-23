@@ -50,7 +50,19 @@ CREATE TABLE release (
     estimated_value    REAL,                    -- market value from Discogs (schema v2)
     value_currency     TEXT,                    -- ISO currency code, e.g. "USD"
     value_basis        TEXT,                    -- grade ("NM") or "Lowest listing"
-    value_updated_at   TEXT                     -- when the value was last fetched
+    value_updated_at   TEXT,                    -- when the value was last fetched
+    location_id        TEXT                     -- location(id) this record is stored at (schema v3)
+);
+
+-- -----------------------------------------------------------------------------
+-- Locations (schema v3) — where a record physically lives (shelf/room/country).
+-- location_id on `release` is a plain reference cleared by the app on delete.
+-- -----------------------------------------------------------------------------
+CREATE TABLE location (
+    id         TEXT PRIMARY KEY,                 -- UUID string
+    name       TEXT NOT NULL,
+    is_default INTEGER NOT NULL DEFAULT 0,       -- the one preselected when adding
+    sort_index INTEGER NOT NULL DEFAULT 0
 );
 
 -- -----------------------------------------------------------------------------
@@ -109,6 +121,7 @@ CREATE INDEX idx_release_barcode        ON release(barcode);
 CREATE INDEX idx_ra_release             ON release_artist(release_id);
 CREATE INDEX idx_rl_release             ON release_label(release_id);
 CREATE INDEX idx_track_release          ON track(release_id);
+CREATE INDEX idx_release_location        ON release(location_id);
 
 -- -----------------------------------------------------------------------------
 -- Full-text search over the fields people actually search by.

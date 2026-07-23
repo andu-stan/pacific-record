@@ -47,9 +47,13 @@ struct RecordFormView: View {
     @State private var notes: String
     @State private var coverPath: String?
     @State private var thumbPath: String?
+    @State private var locationID: String?
     @State private var newStyle = ""
     @State private var showAddStyle = false
     @State private var isFetchingCover = false
+    @State private var showAddLocation = false
+    @State private var newLocationName = ""
+    @State private var locationInitialized = false
 
     init(mode: FormMode, onComplete: (() -> Void)? = nil) {
         self.mode = mode
@@ -71,6 +75,7 @@ struct RecordFormView: View {
         _notes = State(initialValue: release?.notes ?? "")
         _coverPath = State(initialValue: release?.coverPath)
         _thumbPath = State(initialValue: release?.thumbPath)
+        _locationID = State(initialValue: release?.locationID)
     }
 
     var body: some View {
@@ -80,6 +85,7 @@ struct RecordFormView: View {
                 infoCard
                 stylesSection
                 formatSpeed
+                locationSection
                 conditionSection
                 ratingCard
                 notesCard
@@ -90,6 +96,16 @@ struct RecordFormView: View {
         .background(Palette.background)
         .navigationTitle(mode.navTitle)
         .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            // Preselect the default location for a record being added (not one
+            // already saved), and only once so a deliberate "None" choice sticks.
+            if !locationInitialized {
+                locationInitialized = true
+                if mode.editingID == nil, locationID == nil {
+                    locationID = model.defaultLocation?.id
+                }
+            }
+        }
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 Button("Cancel") { dismiss() }
@@ -109,6 +125,16 @@ struct RecordFormView: View {
                 newStyle = ""
             }
             Button("Cancel", role: .cancel) { newStyle = "" }
+        }
+        .alert("New location", isPresented: $showAddLocation) {
+            TextField("Name", text: $newLocationName)
+            Button("Add") {
+                if let created = model.addLocation(newLocationName) { locationID = created.id }
+                newLocationName = ""
+            }
+            Button("Cancel", role: .cancel) { newLocationName = "" }
+        } message: {
+            Text("A shelf, a room, a house — anywhere records live.")
         }
     }
 
@@ -222,6 +248,54 @@ struct RecordFormView: View {
             menuCard(title: "Speed", value: "\(speed) RPM",
                      options: ["33⅓ RPM", "45 RPM", "78 RPM"]) { speed = $0.replacingOccurrences(of: " RPM", with: "") }
         }
+    }
+
+    private var locationSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            SectionCaption(text: "Location")
+            GroupedCard(radius: 14, padding: EdgeInsets(top: 12, leading: 14, bottom: 12, trailing: 14)) {
+                Menu {
+                    Button { locationID = nil } label: {
+                        if locationID == nil {
+                            Label("None", systemImage: "checkmark")
+                        } else {
+                            Text("None")
+                        }
+                    }
+                    if !model.locations.isEmpty {
+                        Divider()
+                        ForEach(model.locations) { location in
+                            Button { locationID = location.id } label: {
+                                if locationID == location.id {
+                                    Label(location.name, systemImage: "checkmark")
+                                } else {
+                                    Text(location.name)
+                                }
+                            }
+                        }
+                    }
+                    Divider()
+                    Button { newLocationName = ""; showAddLocation = true } label: {
+                        Label("New location…", systemImage: "plus")
+                    }
+                } label: {
+                    HStack(spacing: 10) {
+                        Image(systemName: "mappin.and.ellipse")
+                            .font(.system(size: 15)).foregroundStyle(Palette.tertiary)
+                        Text(selectedLocationName)
+                            .font(.prBodyEmphasis)
+                            .foregroundStyle(locationID == nil ? Palette.secondary : Palette.label)
+                        Spacer()
+                        Image(systemName: "chevron.up.chevron.down")
+                            .font(.system(size: 12)).foregroundStyle(Palette.tertiary)
+                    }
+                }
+            }
+        }
+    }
+
+    private var selectedLocationName: String {
+        model.location(id: locationID)?.name ?? "None"
     }
 
     private var conditionSection: some View {
@@ -355,7 +429,8 @@ struct RecordFormView: View {
             estimatedValue: base?.release.estimatedValue,
             valueCurrency: base?.release.valueCurrency,
             valueBasis: base?.release.valueBasis,
-            valueUpdatedAt: base?.release.valueUpdatedAt
+            valueUpdatedAt: base?.release.valueUpdatedAt,
+            locationID: locationID
         )
         let detail = RecordDetail(
             release: release,

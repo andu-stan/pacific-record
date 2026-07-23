@@ -132,6 +132,22 @@ public final class LibraryStore {
             try db.execute(sql: "UPDATE library_meta SET value = ? WHERE key = ?", arguments: ["2", "schema_version"])
         }
 
+        migrator.registerMigration("v3") { db in
+            try db.create(table: "location") { t in
+                t.column("id", .text).primaryKey()
+                t.column("name", .text).notNull()
+                t.column("is_default", .boolean).notNull().defaults(to: false)
+                t.column("sort_index", .integer).notNull().defaults(to: 0)
+            }
+            // Plain column (no FK) so ADD COLUMN is portable; deleteLocation
+            // clears references in app-controlled SQL.
+            try db.alter(table: "release") { t in
+                t.add(column: "location_id", .text)
+            }
+            try db.create(index: "idx_release_location", on: "release", columns: ["location_id"])
+            try db.execute(sql: "UPDATE library_meta SET value = ? WHERE key = ?", arguments: ["3", "schema_version"])
+        }
+
         return migrator
     }
 
@@ -251,6 +267,55 @@ public final class LibraryStore {
                 WHERE release_fts MATCH ?
                 ORDER BY release_fts.rank
                 """, arguments: [matchExpression])
+        }
+    }
+
+    // MARK: - Locations
+
+    public func locations() throws -> [Location] {
+        try dbQueue.read { db in
+            try Location.fetchAll(db, sql: """
+                SELECT * FROM location
+                ORDER BY is_default DESC, sort_index ASC, name COLLATE NOCASE ASC
+                """)
+        }
+    }
+
+    @discardableResult
+    public func addLocation(name: String) throws -> Location {
+        try dbQueue.write { db in
+            let isFirst = try Location.fetchCount(db) == 0
+            let maxIndex = try Int.fetchOne(db, sql: "SELECT COALESCE(MAX(sort_index), -1) FROM location") ?? -1
+            let location = Location(id: UUID().uuidString, name: name, isDefault: isFirst, sortIndex: maxIndex + 1)
+            try location.insert(db)
+            return location
+        }
+    }
+
+    public func renameLocation(id: String, name: String) throws {
+        try dbQueue.write { db in
+            try db.execute(sql: "UPDATE location SET name = ? WHERE id = ?", arguments: [name, id])
+        }
+    }
+
+    public func setDefaultLocation(id: String) throws {
+        try dbQueue.write { db in
+            try db.execute(sql: "UPDATE location SET is_default = 0")
+            try db.execute(sql: "UPDATE location SET is_default = 1 WHERE id = ?", arguments: [id])
+        }
+    }
+
+    /// Deletes a location; records stored there become unassigned. If it was the
+    /// default, the next location (if any) is promoted to default.
+    public func deleteLocation(id: String) throws {
+        try dbQueue.write { db in
+            let wasDefault = try Bool.fetchOne(db, sql: "SELECT is_default FROM location WHERE id = ?", arguments: [id]) ?? false
+            try db.execute(sql: "UPDATE release SET location_id = NULL WHERE location_id = ?", arguments: [id])
+            _ = try Location.deleteOne(db, key: id)
+            if wasDefault,
+               let nextID = try String.fetchOne(db, sql: "SELECT id FROM location ORDER BY sort_index ASC LIMIT 1") {
+                try db.execute(sql: "UPDATE location SET is_default = 1 WHERE id = ?", arguments: [nextID])
+            }
         }
     }
 

@@ -36,6 +36,8 @@ public struct Release: Codable, FetchableRecord, PersistableRecord, Identifiable
     /// What the value is based on: a Goldmine grade ("NM") or "Lowest listing".
     public var valueBasis: String?
     public var valueUpdatedAt: Date?
+    /// The location (shelf/room/country/…) this record is stored at.
+    public var locationID: String?
 
     public static let databaseTableName = "release"
 
@@ -65,6 +67,7 @@ public struct Release: Codable, FetchableRecord, PersistableRecord, Identifiable
         case valueCurrency = "value_currency"
         case valueBasis = "value_basis"
         case valueUpdatedAt = "value_updated_at"
+        case locationID = "location_id"
     }
 
     public init(
@@ -92,7 +95,8 @@ public struct Release: Codable, FetchableRecord, PersistableRecord, Identifiable
         estimatedValue: Double? = nil,
         valueCurrency: String? = nil,
         valueBasis: String? = nil,
-        valueUpdatedAt: Date? = nil
+        valueUpdatedAt: Date? = nil,
+        locationID: String? = nil
     ) {
         self.id = id
         self.title = title
@@ -119,6 +123,7 @@ public struct Release: Codable, FetchableRecord, PersistableRecord, Identifiable
         self.valueCurrency = valueCurrency
         self.valueBasis = valueBasis
         self.valueUpdatedAt = valueUpdatedAt
+        self.locationID = locationID
     }
 }
 

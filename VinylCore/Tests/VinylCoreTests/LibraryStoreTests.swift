@@ -84,4 +84,27 @@ final class LibraryStoreTests: XCTestCase {
         let titles = try store.allReleases(sortedBy: .yearDescending).map(\.title)
         XCTAssertEqual(titles, ["Newer", "Older", "Undated"])
     }
+
+    func testLocationsDefaultAssignmentAndDelete() throws {
+        let store = try makeTempStore()
+        let home = try store.addLocation(name: "Home")
+        XCTAssertTrue(home.isDefault) // first location becomes default
+        let office = try store.addLocation(name: "Office")
+        XCTAssertFalse(office.isDefault)
+
+        try store.setDefaultLocation(id: office.id)
+        let locations = try store.locations()
+        XCTAssertEqual(locations.first?.id, office.id)   // default sorts first
+        XCTAssertEqual(locations.first?.isDefault, true)
+
+        let id = UUID().uuidString
+        var detail = sampleDetail(id: id, title: "X", artist: "Y")
+        detail.release.locationID = office.id
+        try store.save(detail)
+        XCTAssertEqual(try store.detail(id: id)?.release.locationID, office.id)
+
+        try store.deleteLocation(id: office.id)
+        XCTAssertNil(try store.detail(id: id)?.release.locationID)  // unassigned
+        XCTAssertEqual(try store.locations().first(where: { $0.id == home.id })?.isDefault, true) // promoted
+    }
 }

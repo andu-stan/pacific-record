@@ -1,8 +1,10 @@
 import SwiftUI
+import VinylCore
 
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(AppModel.self) private var app
+    @Environment(LibraryModel.self) private var library
     @AppStorage("discogsToken") private var token = ""
     @AppStorage(CoverSource.storageKey) private var coverSourceRaw = CoverSource.appleMusic.rawValue
     @AppStorage(CoverArtResolver.pickCoverOnImportKey) private var pickCoverOnImport = false
@@ -16,6 +18,7 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: 22) {
                 metadataSection
                 coverArtSection
+                locationsSection
                 storageSection
             }
             .padding(.horizontal, Metrics.screenPadding)
@@ -147,6 +150,49 @@ struct SettingsView: View {
             Text("Apple Music has the cleanest artwork; Cover Art Archive and Discogs cover more pressings. With “Choose cover when adding” off, the preferred source is used automatically.")
                 .font(.prSmall).foregroundStyle(Palette.tertiary)
                 .padding(.horizontal, 4)
+        }
+    }
+
+    // MARK: Collection
+
+    private var locationsSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            SectionCaption(text: "Collection")
+            GroupedCard(radius: 14) {
+                NavigationLink {
+                    LocationsView()
+                } label: {
+                    HStack(spacing: 12) {
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .fill(Palette.accent.opacity(0.16))
+                                .frame(width: 30, height: 30)
+                            Image(systemName: "mappin.and.ellipse")
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundStyle(Palette.accent)
+                        }
+                        Text("Locations").font(.prBody).foregroundStyle(Palette.label)
+                        Spacer()
+                        Text(locationSummary).font(.prBody).foregroundStyle(Palette.secondary)
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(Palette.quaternary)
+                    }
+                    .padding(.vertical, 10)
+                }
+                .buttonStyle(.plain)
+            }
+            Text("Track where records live — a shelf, a room, another country. The default is preselected when adding a record.")
+                .font(.prSmall).foregroundStyle(Palette.tertiary)
+                .padding(.horizontal, 4)
+        }
+    }
+
+    private var locationSummary: String {
+        switch library.locations.count {
+        case 0: return "None"
+        case 1: return "1 place"
+        case let count: return "\(count) places"
         }
     }
 

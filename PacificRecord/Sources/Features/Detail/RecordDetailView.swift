@@ -54,6 +54,7 @@ struct RecordDetailScreen: View {
                     value: estimate,
                     isEstimating: isEstimating,
                     canEstimate: detail.release.discogsReleaseID != nil,
+                    locationName: model.location(id: detail.release.locationID)?.name,
                     onEstimate: { estimateValue(detail.release) },
                     onDelete: { confirmDelete = true }
                 )
@@ -112,6 +113,7 @@ struct RecordDetailContent: View {
     var value: StoredValue?
     var isEstimating: Bool
     var canEstimate: Bool
+    var locationName: String? = nil
     var onEstimate: () -> Void
     var onDelete: () -> Void
 
@@ -173,6 +175,7 @@ struct RecordDetailContent: View {
         if !release.yearCountryLine.isEmpty { pairs.append(("Year · Country", release.yearCountryLine)) }
         if !release.formatLine.isEmpty { pairs.append(("Format", release.formatLine)) }
         if !release.genreLine.isEmpty { pairs.append(("Genre", release.genreLine)) }
+        if let locationName, !locationName.isEmpty { pairs.append(("Location", locationName)) }
         return pairs
     }
 

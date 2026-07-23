@@ -16,6 +16,9 @@ can be opened and read by other applications — not locked inside the app.
 - Track collector details per record: label, catalogue number, pressing year,
   country, genre/styles, format & speed, media + sleeve condition (Goldmine
   grading), personal rating, and free-text notes.
+- Track a collection split across **multiple locations** (a shelf, a room, even
+  another country): manage the list, set a default, and pick a location when
+  adding a record. The default is preselected automatically.
 
 ## Key decisions
 
@@ -103,6 +106,11 @@ To enable it once you have a **paid Apple Developer** team:
     stopping at the first that has an image. Settings lets you pick the preferred
     source, or turn on **"Choose cover when adding"** to hand-pick from every
     found cover during import. The edit form's cover control re-fetches on demand.
+  - **Locations** — track where a split collection physically lives (schema v3).
+    Settings › Collection › Locations manages the list (add / rename / delete,
+    set a default); the add/edit form has a location picker that preselects the
+    default and can create a new location inline; the detail screen shows it.
+    Deleting a location unassigns its records rather than deleting them.
 
 See the roadmap in [`docs/PLAN.md`](docs/PLAN.md).
 
