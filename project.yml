@@ -18,8 +18,10 @@ targets:
     platform: iOS
     deploymentTarget: "17.0"
     sources:
+      # XcodeGen has no separate "resources" key — every file goes under
+      # `sources` and is sorted into the right build phase by type, so the
+      # asset catalog (app icon, accent colour) must be listed here too.
       - path: PacificRecord/Sources
-    resources:
       - path: PacificRecord/Resources
     dependencies:
       - package: VinylCore
