@@ -4,6 +4,7 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(AppModel.self) private var app
     @AppStorage("discogsToken") private var token = ""
+    @AppStorage(CoverSource.storageKey) private var coverSourceRaw = CoverSource.appleMusic.rawValue
     @State private var showTokenEntry = false
     @State private var tokenDraft = ""
 
@@ -13,6 +14,7 @@ struct SettingsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
                 metadataSection
+                coverArtSection
                 storageSection
             }
             .padding(.horizontal, Metrics.screenPadding)
@@ -96,6 +98,45 @@ struct SettingsView: View {
             }
             .padding(.vertical, 12)
             if divider { HRule() }
+        }
+    }
+
+    // MARK: Cover art
+
+    private var currentCoverSource: CoverSource {
+        CoverSource(rawValue: coverSourceRaw) ?? .appleMusic
+    }
+
+    private var coverArtSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            SectionCaption(text: "Cover art")
+            GroupedCard(radius: 14) {
+                Menu {
+                    ForEach(CoverSource.allCases) { source in
+                        Button {
+                            coverSourceRaw = source.rawValue
+                        } label: {
+                            if source.rawValue == coverSourceRaw {
+                                Label(source.displayName, systemImage: "checkmark")
+                            } else {
+                                Text(source.displayName)
+                            }
+                        }
+                    }
+                } label: {
+                    HStack {
+                        Text("Preferred source").font(.prBody).foregroundStyle(Palette.label)
+                        Spacer()
+                        Text(currentCoverSource.displayName).font(.prBody).foregroundStyle(Palette.secondary)
+                        Image(systemName: "chevron.up.chevron.down")
+                            .font(.system(size: 12)).foregroundStyle(Palette.tertiary)
+                    }
+                    .padding(.vertical, 12)
+                }
+            }
+            Text("Apple Music has the cleanest artwork; Cover Art Archive and Discogs cover more pressings. Falls back to the others automatically.")
+                .font(.prSmall).foregroundStyle(Palette.tertiary)
+                .padding(.horizontal, 4)
         }
     }
 

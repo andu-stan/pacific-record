@@ -99,9 +99,10 @@ To enable it once you have a **paid Apple Developer** team:
     set, otherwise the lowest current listing) and lets you refresh it. Stored
     on the record (schema v2); the Library header shows the collection total.
   - **High-res cover art** — since Discogs images are user-uploaded scans,
-    imports prefer Apple Music's official artwork (matched by artist + title,
-    upscaled) and fall back to the Discogs image only when there's no confident
-    match. The edit form's cover control re-fetches Apple artwork on demand.
+    imports resolve covers through **Apple Music → Cover Art Archive → Discogs**,
+    stopping at the first that has an image. The preferred source is selectable
+    in Settings (it always falls back through the others). The edit form's cover
+    control re-fetches on demand.
 
 See the roadmap in [`docs/PLAN.md`](docs/PLAN.md).
 

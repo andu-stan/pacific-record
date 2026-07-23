@@ -146,7 +146,7 @@ struct RecordFormView: View {
         guard !(titleText.isEmpty && artistText.isEmpty), let folder = libraryFolder, !isFetchingCover else { return }
         isFetchingCover = true
         Task {
-            if let url = await CoverArtResolver.bestURL(artist: artistText, title: titleText, fallback: nil) {
+            if let url = await CoverArtResolver.bestURL(artist: artistText, title: titleText) {
                 let fileID = "\(mode.initialDetail?.release.id ?? UUID().uuidString)-\(Int(Date().timeIntervalSince1970))"
                 if let result = try? await CoverImageManager().downloadCover(from: url, releaseID: fileID, into: folder) {
                     coverPath = result.coverPath

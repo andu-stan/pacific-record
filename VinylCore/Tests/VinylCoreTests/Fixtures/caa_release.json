@@ -1,0 +1,21 @@
+{
+  "images": [
+    {
+      "types": ["Front"],
+      "front": true,
+      "image": "http://coverartarchive.org/release/mbid/123.jpg",
+      "thumbnails": {
+        "250": "http://coverartarchive.org/release/mbid/123-250.jpg",
+        "500": "http://coverartarchive.org/release/mbid/123-500.jpg",
+        "1200": "http://coverartarchive.org/release/mbid/123-1200.jpg",
+        "small": "http://coverartarchive.org/release/mbid/123-250.jpg",
+        "large": "http://coverartarchive.org/release/mbid/123-500.jpg"
+      }
+    },
+    {
+      "types": ["Back"],
+      "front": false,
+      "image": "http://coverartarchive.org/release/mbid/456.jpg"
+    }
+  ]
+}

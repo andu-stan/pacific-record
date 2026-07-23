@@ -107,9 +107,13 @@ final class AddFlowModel {
             let recordID = UUID().uuidString
             var enriched = match
             if let full = try? await provider.enrich(match) { enriched = full }
-            // Prefer Apple's clean high-res artwork; fall back to the Discogs scan.
+            // Prefer the user's cover source (Apple by default), then the others.
             let coverURL = await CoverArtResolver.bestURL(
-                artist: enriched.artistDisplay, title: enriched.title, fallback: enriched.coverImageURL)
+                artist: enriched.artistDisplay,
+                title: enriched.title,
+                barcode: enriched.barcode,
+                musicbrainzMBID: enriched.musicbrainzMBID,
+                discogsFallback: enriched.coverImageURL)
             let cover = await downloadCover(url: coverURL, recordID: recordID)
             draft = RecordDetail.draft(from: enriched, id: recordID, coverPath: cover.path, thumbPath: cover.thumb)
             phase = .idle
