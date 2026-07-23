@@ -51,6 +51,9 @@ struct RecordFormView: View {
     @State private var newStyle = ""
     @State private var showAddStyle = false
     @State private var isFetchingCover = false
+    @State private var coverCandidates: [CoverCandidate] = []
+    @State private var coverFileID = ""
+    @State private var showCoverChooser = false
     @State private var showAddLocation = false
     @State private var newLocationName = ""
     @State private var locationInitialized = false
@@ -136,6 +139,19 @@ struct RecordFormView: View {
         } message: {
             Text("A shelf, a room, a house — anywhere records live.")
         }
+        .sheet(isPresented: $showCoverChooser) {
+            if let folder = libraryFolder {
+                CoverChooserSheet(
+                    candidates: coverCandidates,
+                    seed: title.isEmpty ? artist : title,
+                    fileID: coverFileID,
+                    folder: folder
+                ) { newCoverPath, newThumbPath in
+                    coverPath = newCoverPath
+                    thumbPath = newThumbPath
+                }
+            }
+        }
     }
 
     // MARK: Sections
@@ -155,9 +171,10 @@ struct RecordFormView: View {
                     }
                 }
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(isFetchingCover ? "Fetching artwork…" : "Replace cover art")
+                    Text(isFetchingCover ? "Finding covers…" : "Choose cover art")
                         .font(.prBodyEmphasis).foregroundStyle(Palette.tint)
-                    Text("High-res from Apple Music").font(.prSmall).foregroundStyle(Palette.tertiary)
+                    Text("Pick from Apple Music, Cover Art Archive & Discogs")
+                        .font(.prSmall).foregroundStyle(Palette.tertiary)
                 }
                 Spacer()
             }
@@ -166,25 +183,28 @@ struct RecordFormView: View {
         .disabled(isFetchingCover)
     }
 
+    /// Looks up every available cover for the current fields and opens the
+    /// chooser grid. A warning haptic fires if nothing is found.
     private func replaceCover() {
         let artistText = artist.trimmingCharacters(in: .whitespacesAndNewlines)
         let titleText = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !(titleText.isEmpty && artistText.isEmpty), let folder = libraryFolder, !isFetchingCover else { return }
+        guard !(titleText.isEmpty && artistText.isEmpty), libraryFolder != nil, !isFetchingCover else { return }
         isFetchingCover = true
+        let base = mode.initialDetail?.release
         Task {
-            if let url = await CoverArtResolver.bestURL(artist: artistText, title: titleText) {
-                let fileID = "\(mode.initialDetail?.release.id ?? UUID().uuidString)-\(Int(Date().timeIntervalSince1970))"
-                if let result = try? await CoverImageManager().downloadCover(from: url, releaseID: fileID, into: folder) {
-                    coverPath = result.coverPath
-                    thumbPath = result.thumbPath
-                    Haptics.success()
-                } else {
-                    Haptics.warning()
-                }
-            } else {
-                Haptics.warning()
-            }
+            let candidates = await CoverArtResolver.candidates(
+                artist: artistText,
+                title: titleText,
+                barcode: base?.barcode,
+                musicbrainzMBID: base?.musicbrainzMBID)
             isFetchingCover = false
+            if candidates.isEmpty {
+                Haptics.warning()
+            } else {
+                coverCandidates = candidates
+                coverFileID = "\(base?.id ?? UUID().uuidString)-\(Int(Date().timeIntervalSince1970))"
+                showCoverChooser = true
+            }
         }
     }
 

@@ -384,7 +384,6 @@ struct CandidateRow: View {
 
 struct CoverPickerView: View {
     @Bindable var model: AddFlowModel
-    private let columns = [GridItem(.flexible(), spacing: 14), GridItem(.flexible(), spacing: 14)]
 
     var body: some View {
         ScrollView {
@@ -392,20 +391,7 @@ struct CoverPickerView: View {
                 Text("Pick the cover to use for this record.")
                     .font(.prBody).foregroundStyle(Palette.secondary)
 
-                LazyVGrid(columns: columns, spacing: 16) {
-                    ForEach(model.coverCandidates) { candidate in
-                        Button { model.selectCover(candidate) } label: {
-                            VStack(alignment: .leading, spacing: 6) {
-                                RemoteCoverView(url: candidate.url, seed: model.pickerSeed, cornerRadius: 8)
-                                    .aspectRatio(1, contentMode: .fit)
-                                    .shadow(color: .black.opacity(0.5), radius: 7, y: 4)
-                                Text(candidate.source.displayName)
-                                    .font(.prSmall).foregroundStyle(Palette.secondary)
-                            }
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
+                CoverChooserGrid(candidates: model.coverCandidates, seed: model.pickerSeed) { model.selectCover($0) }
 
                 Button { model.selectCover(nil) } label: {
                     Text("Skip — add without a cover")
