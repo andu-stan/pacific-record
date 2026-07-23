@@ -52,16 +52,21 @@ open PacificRecord.xcodeproj
 
 To build/verify just the core from the command line: `cd VinylCore && swift test`.
 
-### iCloud signing
+### iCloud (currently disabled)
 
-The app declares an iCloud Documents container (`iCloud.com.pacificrecord.app`)
-so the library appears in the Files app and syncs across devices. Building with
-this requires a **paid Apple Developer account**: open the project, select your
-Team under Signing & Capabilities, and let automatic signing provision the
-container (rename the bundle id + container id to your own if needed — they must
-match). On a **free** account, remove `CODE_SIGN_ENTITLEMENTS` and the
-`NSUbiquitousContainers` key — the app then runs entirely on-device (it already
-falls back to local storage at runtime whenever iCloud is unavailable).
+iCloud Drive storage is **off by default** so the app builds and runs on a
+**free** Apple ID: `AppConfig.iCloudEnabled = false`, and the entitlement and
+container declaration are commented out (`project.yml`, `Info.plist`). The app
+runs entirely on-device.
+
+To enable it once you have a **paid Apple Developer** team:
+
+1. Set `AppConfig.iCloudEnabled = true` (`PacificRecord/Sources/App/AppConfig.swift`).
+2. Uncomment `CODE_SIGN_ENTITLEMENTS` in `project.yml`.
+3. Uncomment `NSUbiquitousContainers` in `PacificRecord/Info.plist`.
+4. Run `xcodegen generate`, then select your Team under Signing & Capabilities
+   (rename the bundle id + `iCloud.…` container id to your own if needed — they
+   must match).
 
 ## Status
 
@@ -82,7 +87,8 @@ falls back to local storage at runtime whenever iCloud is unavailable).
     app's iCloud container (visible in Files, readable by other apps), resolved
     asynchronously at launch with a graceful **local fallback** when iCloud is
     off. Switchable from Settings; switching copies your library to the new
-    location (never deletes).
+    location (never deletes). *Currently disabled by default* so the app builds
+    on a free account — see [iCloud](#icloud-currently-disabled) to enable.
   - **Polish (M4)** — app icon (a vinyl record in the brand amber), VoiceOver
     labels on icon-only controls (covers marked decorative), haptics on scan /
     save, and friendlier Discogs rate-limit / auth messages. Full Dynamic Type

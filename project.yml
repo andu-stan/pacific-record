@@ -33,6 +33,7 @@ targets:
         TARGETED_DEVICE_FAMILY: "1"          # iPhone only
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: PacificRecord/Info.plist
-        CODE_SIGN_ENTITLEMENTS: PacificRecord/PacificRecord.entitlements
+        # iCloud entitlements require a paid Apple Developer team. Re-enable with iCloud:
+        # CODE_SIGN_ENTITLEMENTS: PacificRecord/PacificRecord.entitlements
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor

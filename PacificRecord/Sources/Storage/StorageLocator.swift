@@ -62,6 +62,8 @@ enum StorageLocator {
     }
 
     private static func iCloudDocumentsFolder() -> URL? {
+        // Disabled until the app is signed with a paid Apple Developer team.
+        guard AppConfig.iCloudEnabled else { return nil }
         // Must run off the main thread — this performs blocking I/O.
         guard let container = FileManager.default.url(forUbiquityContainerIdentifier: containerIdentifier) else {
             return nil

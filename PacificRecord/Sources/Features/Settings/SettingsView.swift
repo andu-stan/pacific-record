@@ -133,20 +133,27 @@ struct SettingsView: View {
                     }
                     .padding(.bottom, 12)
                     HRule()
-                    HStack {
-                        Text("Use iCloud Drive").font(.prBody).foregroundStyle(Palette.label)
-                        Spacer()
-                        Toggle("", isOn: iCloudToggle)
-                            .labelsHidden()
-                            .tint(Palette.accent)
-                            .disabled(!app.iCloudAvailable || app.switchingStorage)
-                    }
-                    .padding(.top, 10)
-                    if !app.iCloudAvailable {
-                        Text("Sign in to iCloud and turn on iCloud Drive to sync across devices.")
+                    if AppConfig.iCloudEnabled {
+                        HStack {
+                            Text("Use iCloud Drive").font(.prBody).foregroundStyle(Palette.label)
+                            Spacer()
+                            Toggle("", isOn: iCloudToggle)
+                                .labelsHidden()
+                                .tint(Palette.accent)
+                                .disabled(!app.iCloudAvailable || app.switchingStorage)
+                        }
+                        .padding(.top, 10)
+                        if !app.iCloudAvailable {
+                            Text("Sign in to iCloud and turn on iCloud Drive to sync across devices.")
+                                .font(.prSmall).foregroundStyle(Palette.tertiary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.top, 8)
+                        }
+                    } else {
+                        Text("iCloud sync is off in this build — enable it once the app is signed with a paid Apple Developer account.")
                             .font(.prSmall).foregroundStyle(Palette.tertiary)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.top, 8)
+                            .padding(.top, 10)
                     }
                 }
             }
