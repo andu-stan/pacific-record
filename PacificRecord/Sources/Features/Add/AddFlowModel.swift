@@ -121,6 +121,7 @@ final class AddFlowModel {
                     title: enriched.title,
                     barcode: enriched.barcode,
                     musicbrainzMBID: enriched.musicbrainzMBID,
+                    discogsReleaseID: enriched.discogsReleaseID,
                     discogsFallback: enriched.coverImageURL)
                 if candidates.isEmpty {
                     draft = RecordDetail.draft(from: enriched, id: recordID)

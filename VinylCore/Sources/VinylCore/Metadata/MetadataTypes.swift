@@ -23,6 +23,18 @@ public struct Money: Sendable, Equatable {
     }
 }
 
+/// An image for a release from an online source: a full-size URL to download
+/// plus an optional lighter thumbnail for grids and pickers.
+public struct RemoteImage: Sendable, Equatable {
+    public var full: URL
+    public var thumbnail: URL?
+
+    public init(full: URL, thumbnail: URL? = nil) {
+        self.full = full
+        self.thumbnail = thumbnail
+    }
+}
+
 /// A single track from an online lookup (pre-persistence, no database id).
 public struct TrackInfo: Sendable, Equatable {
     public var position: String?

@@ -42,6 +42,18 @@ final class DiscogsClientTests: XCTestCase {
         XCTAssertEqual(enriched.coverImageURL?.absoluteString, "https://img.discogs.com/front-hires.jpg")
     }
 
+    func testImagesReturnsEveryReleaseImagePrimaryFirst() async throws {
+        let release = try Fixture.data("discogs_release")
+        let images = try await client { _ in release }.images(releaseID: 249504)
+
+        XCTAssertEqual(images.count, 2)
+        // The fixture lists the secondary (back) first; primary (front) is moved ahead.
+        XCTAssertEqual(images.first?.full.absoluteString, "https://img.discogs.com/front-hires.jpg")
+        XCTAssertEqual(images.first?.thumbnail?.absoluteString, "https://img.discogs.com/front150.jpg")
+        XCTAssertEqual(images.last?.full.absoluteString, "https://img.discogs.com/back.jpg")
+        XCTAssertEqual(images.last?.thumbnail?.absoluteString, "https://img.discogs.com/back150.jpg")
+    }
+
     func testDurationParsing() {
         XCTAssertEqual(DiscogsClient.parseDuration("9:22"), 562)
         XCTAssertEqual(DiscogsClient.parseDuration("1:02:03"), 3723)

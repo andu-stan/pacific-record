@@ -196,7 +196,8 @@ struct RecordFormView: View {
                 artist: artistText,
                 title: titleText,
                 barcode: base?.barcode,
-                musicbrainzMBID: base?.musicbrainzMBID)
+                musicbrainzMBID: base?.musicbrainzMBID,
+                discogsReleaseID: base?.discogsReleaseID)
             isFetchingCover = false
             if candidates.isEmpty {
                 Haptics.warning()

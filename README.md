@@ -107,7 +107,9 @@ To enable it once you have a **paid Apple Developer** team:
     source, or turn on **"Choose cover when adding"** to hand-pick from every
     found cover during import. The new/edit form's **"Choose cover art"** control
     opens the same picker grid on demand, so you can pick a cover for a manual
-    entry or swap one later.
+    entry or swap one later. The grid includes **every image from the Discogs
+    release** (front, back, labels…), not just the primary — so a poor scan isn't
+    your only Discogs option.
   - **Locations** — track where a split collection physically lives (schema v3).
     Settings › Collection › Locations manages the list (add / rename / delete,
     set a default); the add/edit form has a location picker that preselects the

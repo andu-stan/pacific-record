@@ -24,10 +24,13 @@ enum CoverSource: String, CaseIterable, Identifiable {
     }
 }
 
-/// A cover option surfaced during a manual pick.
+/// A cover option surfaced during a manual pick. `url` is the full-size image to
+/// download; `thumbURL` is an optional lighter image for the grid (falls back to
+/// `url`), so showing many covers at once stays cheap.
 struct CoverCandidate: Identifiable, Hashable {
     let source: CoverSource
     let url: URL
+    var thumbURL: URL? = nil
     var id: String { url.absoluteString }
 }
 
@@ -69,13 +72,16 @@ enum CoverArtResolver {
         return discogsFallback
     }
 
-    /// Every source that has an image for this record, ordered with the
-    /// preferred source first — for the manual cover picker.
+    /// Every cover available for this record, ordered with the preferred source
+    /// first — for the manual cover picker. Apple and Cover Art Archive each
+    /// contribute one image; Discogs contributes *all* of the release's images
+    /// (front, back, labels…) when a `discogsReleaseID` is known.
     static func candidates(
         artist: String,
         title: String,
         barcode: String? = nil,
         musicbrainzMBID: String? = nil,
+        discogsReleaseID: Int? = nil,
         discogsFallback: URL? = nil
     ) async -> [CoverCandidate] {
         var found: [CoverCandidate] = []
@@ -94,14 +100,26 @@ enum CoverArtResolver {
             found.append(CoverCandidate(source: .coverArtArchive, url: caa))
         }
 
-        if let discogsFallback {
-            found.append(CoverCandidate(source: .discogs, url: discogsFallback))
+        // Discogs: pull every image for the release, not just the primary.
+        var discogsCovers: [CoverCandidate] = []
+        if let discogsReleaseID {
+            let token = UserDefaults.standard.string(forKey: "discogsToken") ?? ""
+            if let images = try? await DiscogsClient(token: token).images(releaseID: discogsReleaseID) {
+                discogsCovers = images.map {
+                    CoverCandidate(source: .discogs, url: $0.full, thumbURL: $0.thumbnail)
+                }
+            }
         }
+        // Fall back to the single known Discogs URL if the lookup found nothing.
+        if discogsCovers.isEmpty, let discogsFallback {
+            discogsCovers = [CoverCandidate(source: .discogs, url: discogsFallback)]
+        }
+        found.append(contentsOf: discogsCovers)
 
+        // Group by preferred source order, keeping each source's own order
+        // (so the Discogs primary/front stays first among its images).
         let order = orderedSources()
-        return found.sorted {
-            (order.firstIndex(of: $0.source) ?? Int.max) < (order.firstIndex(of: $1.source) ?? Int.max)
-        }
+        return order.flatMap { source in found.filter { $0.source == source } }
     }
 
     /// Preferred source first, then the remaining sources in default order.

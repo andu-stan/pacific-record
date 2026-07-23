@@ -72,6 +72,19 @@ public struct DiscogsClient: MetadataProvider {
         return Self.map(detail: detail, fallback: match)
     }
 
+    // MARK: - Images
+
+    /// Every image for a release (front, back, labels…), primary first — for the
+    /// cover picker, where the single primary cover isn't enough. Each carries a
+    /// full-size URL plus a 150px thumbnail. Works unauthenticated (public read).
+    public func images(releaseID: Int) async throws -> [RemoteImage] {
+        await limiter.waitForTurn()
+        let url = baseURL.appendingPathComponent("releases/\(releaseID)")
+        let data = try await http.data(from: url, headers: headers)
+        let detail = try Self.decoder.decode(DiscogsReleaseDetail.self, from: data)
+        return Self.orderedImages(detail.images)
+    }
+
     // MARK: - Marketplace value
 
     /// Suggested sale prices per Goldmine condition. Requires a token with
@@ -216,6 +229,18 @@ public struct DiscogsClient: MetadataProvider {
         guard let images = images, !images.isEmpty else { return nil }
         let primary = images.first { ($0.type ?? "") == "primary" } ?? images.first
         return primary?.uri.flatMap { URL(string: $0) }
+    }
+
+    /// All release images, the primary (front) moved first, other images kept in
+    /// their original order.
+    static func orderedImages(_ images: [DiscogsImage]?) -> [RemoteImage] {
+        guard let images else { return [] }
+        let primary = images.filter { ($0.type ?? "") == "primary" }
+        let others = images.filter { ($0.type ?? "") != "primary" }
+        return (primary + others).compactMap { image in
+            guard let uri = image.uri, let full = URL(string: uri) else { return nil }
+            return RemoteImage(full: full, thumbnail: image.uri150.flatMap { URL(string: $0) })
+        }
     }
 
     // "9:22" -> 562, "1:02:03" -> 3723.
