@@ -13,6 +13,7 @@ enum AddChoice: Int, Identifiable {
 
 struct AddEntrySheet: View {
     var onSelect: (AddChoice) -> Void
+    var onImportCollection: () -> Void
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -39,6 +40,8 @@ struct AddEntrySheet: View {
                            subtitle: "Look up on Discogs") { onSelect(.search) }
                     option(icon: "square.and.pencil", iconColor: Color(hex: 0x48484A), title: "Enter manually",
                            subtitle: "Fill in every field yourself") { onSelect(.manual) }
+                    option(icon: "square.and.arrow.down.on.square", iconColor: Palette.positive, title: "Import Discogs collection",
+                           subtitle: "Bring in everything from your profile") { onImportCollection() }
                 }
 
                 Button { dismiss() } label: {
@@ -54,7 +57,7 @@ struct AddEntrySheet: View {
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .presentationDetents([.height(430)])
+        .presentationDetents([.height(508)])
         .presentationDragIndicator(.hidden)
         .presentationBackground(Palette.grouped)
         .presentationCornerRadius(26)

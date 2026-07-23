@@ -54,6 +54,32 @@ final class DiscogsClientTests: XCTestCase {
         XCTAssertEqual(images.last?.thumbnail?.absoluteString, "https://img.discogs.com/back150.jpg")
     }
 
+    func testCollectionPageMapsEntriesRatingAndCondition() async throws {
+        let data = try Fixture.data("discogs_collection")
+        let page = try await client { _ in data }
+            .collectionPage(username: "someone", page: 1, mediaFieldID: 1, sleeveFieldID: 2)
+
+        XCTAssertEqual(page.totalItems, 2)
+        XCTAssertEqual(page.items.count, 2)
+
+        let kob = page.items[0]
+        XCTAssertEqual(kob.match.title, "Kind Of Blue")
+        XCTAssertEqual(kob.match.artistDisplay, "Miles Davis")
+        XCTAssertEqual(kob.match.discogsReleaseID, 249504)
+        XCTAssertEqual(kob.match.year, 1959)
+        XCTAssertEqual(kob.match.format, "LP")
+        XCTAssertEqual(kob.match.speed, "45 RPM")
+        XCTAssertEqual(kob.match.labels.first?.catalogNumber, "CS 8163")
+        XCTAssertEqual(kob.match.coverImageURL?.absoluteString, "https://img.discogs.com/kob.jpg")
+        XCTAssertEqual(kob.rating, 5)
+        XCTAssertEqual(kob.mediaCondition, .nearMint)   // mapped from the custom field
+        XCTAssertEqual(kob.sleeveCondition, .veryGoodPlus)
+
+        let bt = page.items[1]
+        XCTAssertEqual(bt.rating, 0)
+        XCTAssertNil(bt.mediaCondition)                 // no notes → blank
+    }
+
     func testDurationParsing() {
         XCTAssertEqual(DiscogsClient.parseDuration("9:22"), 562)
         XCTAssertEqual(DiscogsClient.parseDuration("1:02:03"), 3723)

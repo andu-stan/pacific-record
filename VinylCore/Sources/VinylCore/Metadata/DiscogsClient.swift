@@ -114,6 +114,106 @@ public struct DiscogsClient: MetadataProvider {
         return Money(amount: price, currency: "USD")
     }
 
+    // MARK: - Collection
+
+    /// The authenticated user's Discogs username (derived from the token), so a
+    /// collection import doesn't need the user to type it.
+    public func identity() async throws -> String {
+        await limiter.waitForTurn()
+        let url = baseURL.appendingPathComponent("oauth/identity")
+        let data = try await http.data(from: url, headers: headers)
+        return try Self.decoder.decode(DiscogsIdentity.self, from: data).username
+    }
+
+    /// The collection's "Media/Sleeve Condition" custom-field ids, if the user
+    /// created those fields, so grades can be mapped during import.
+    public func collectionFieldIDs(username: String) async throws -> CollectionFieldIDs {
+        await limiter.waitForTurn()
+        let url = baseURL.appendingPathComponent("users/\(username)/collection/fields")
+        let data = try await http.data(from: url, headers: headers)
+        let response = try Self.decoder.decode(DiscogsFieldsResponse.self, from: data)
+        var media: Int?
+        var sleeve: Int?
+        for field in response.fields {
+            let name = (field.name ?? "").lowercased()
+            if name.contains("media") { media = field.id }
+            else if name.contains("sleeve") { sleeve = field.id }
+        }
+        return CollectionFieldIDs(media: media, sleeve: sleeve)
+    }
+
+    /// One page of the user's collection (folder 0 = "All"), mapped to importable
+    /// entries. `perPage` maxes out at 100 on Discogs.
+    public func collectionPage(
+        username: String,
+        folderID: Int = 0,
+        page: Int,
+        perPage: Int = 100,
+        mediaFieldID: Int? = nil,
+        sleeveFieldID: Int? = nil
+    ) async throws -> CollectionPage {
+        await limiter.waitForTurn()
+        var components = URLComponents(
+            url: baseURL.appendingPathComponent("users/\(username)/collection/folders/\(folderID)/releases"),
+            resolvingAgainstBaseURL: false
+        )
+        components?.queryItems = [
+            URLQueryItem(name: "page", value: String(page)),
+            URLQueryItem(name: "per_page", value: String(perPage)),
+            URLQueryItem(name: "sort", value: "artist"),
+            URLQueryItem(name: "sort_order", value: "asc"),
+        ]
+        guard let url = components?.url else { throw MetadataError.invalidURL }
+        let data = try await http.data(from: url, headers: headers)
+        let response = try Self.decoder.decode(DiscogsCollectionResponse.self, from: data)
+        let items = response.releases.map {
+            Self.map(collectionRelease: $0, mediaFieldID: mediaFieldID, sleeveFieldID: sleeveFieldID)
+        }
+        return CollectionPage(
+            items: items,
+            page: response.pagination.page,
+            totalPages: response.pagination.pages,
+            totalItems: response.pagination.items
+        )
+    }
+
+    static func map(collectionRelease release: DiscogsCollectionRelease, mediaFieldID: Int?, sleeveFieldID: Int?) -> CollectionEntry {
+        let info = release.basicInformation
+        let artists = cleanArtistNames((info.artists ?? []).compactMap(\.name).filter { !$0.isEmpty })
+        let labels = (info.labels ?? []).compactMap { label -> LabelCredit? in
+            guard let name = label.name else { return nil }
+            return LabelCredit(name: name, catalogNumber: label.catno)
+        }
+        let descriptions = (info.formats ?? []).flatMap { $0.descriptions ?? [] }
+        let match = MetadataMatch(
+            id: "discogs:\(release.id)",
+            source: .discogs,
+            title: info.title ?? "",
+            artistDisplay: artists.joined(separator: ", "),
+            artists: artists,
+            year: info.year,
+            country: nil,
+            genre: info.genres?.first,
+            styles: info.styles ?? [],
+            format: formatToken(from: descriptions),
+            speed: speedToken(from: descriptions),
+            labels: labels,
+            barcode: nil,
+            discogsReleaseID: release.id,
+            musicbrainzMBID: nil,
+            coverImageURL: (info.coverImage ?? info.thumb).flatMap { URL(string: $0) },
+            tracks: []
+        )
+        var media: Condition?
+        var sleeve: Condition?
+        for note in release.notes ?? [] {
+            if let mediaFieldID, note.fieldId == mediaFieldID { media = Condition(discogsPriceKey: note.value) }
+            if let sleeveFieldID, note.fieldId == sleeveFieldID { sleeve = Condition(discogsPriceKey: note.value) }
+        }
+        let rating = min(5, max(0, release.rating ?? 0))
+        return CollectionEntry(match: match, rating: rating, mediaCondition: media, sleeveCondition: sleeve)
+    }
+
     // MARK: - Networking
 
     private func search(queryItems: [URLQueryItem]) async throws -> [MetadataMatch] {
@@ -257,10 +357,83 @@ public struct DiscogsClient: MetadataProvider {
     }
 }
 
+// MARK: - Collection types
+
+/// One page of a user's Discogs collection, mapped for import.
+public struct CollectionPage: Sendable {
+    public let items: [CollectionEntry]
+    public let page: Int
+    public let totalPages: Int
+    public let totalItems: Int
+}
+
+/// A single collection item ready to import: the release metadata plus the
+/// user's Discogs rating and, if they grade in Discogs, media/sleeve condition.
+public struct CollectionEntry: Sendable {
+    public let match: MetadataMatch
+    public let rating: Int
+    public let mediaCondition: Condition?
+    public let sleeveCondition: Condition?
+}
+
+/// The custom-field ids Discogs uses for media/sleeve grades in a collection.
+public struct CollectionFieldIDs: Sendable {
+    public let media: Int?
+    public let sleeve: Int?
+}
+
 // MARK: - Discogs JSON
 
 struct DiscogsSearchResponse: Decodable {
     let results: [DiscogsSearchResult]
+}
+
+struct DiscogsIdentity: Decodable {
+    let username: String
+}
+
+struct DiscogsCollectionResponse: Decodable {
+    let pagination: DiscogsPagination
+    let releases: [DiscogsCollectionRelease]
+}
+
+struct DiscogsPagination: Decodable {
+    let page: Int
+    let pages: Int
+    let items: Int
+}
+
+struct DiscogsCollectionRelease: Decodable {
+    let id: Int
+    let rating: Int?
+    let basicInformation: DiscogsBasicInformation
+    let notes: [DiscogsCollectionNote]?
+}
+
+struct DiscogsCollectionNote: Decodable {
+    let fieldId: Int
+    let value: String
+}
+
+struct DiscogsBasicInformation: Decodable {
+    let title: String?
+    let year: Int?
+    let thumb: String?
+    let coverImage: String?
+    let formats: [DiscogsFormat]?
+    let labels: [DiscogsLabel]?
+    let artists: [DiscogsArtist]?
+    let genres: [String]?
+    let styles: [String]?
+}
+
+struct DiscogsFieldsResponse: Decodable {
+    let fields: [DiscogsField]
+}
+
+struct DiscogsField: Decodable {
+    let id: Int
+    let name: String?
 }
 
 struct DiscogsSearchResult: Decodable {

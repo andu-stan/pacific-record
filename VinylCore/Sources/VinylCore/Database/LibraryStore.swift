@@ -347,6 +347,14 @@ public final class LibraryStore {
         }
     }
 
+    /// Discogs release ids already in the library, so a collection import can
+    /// skip records that are already saved.
+    public func discogsReleaseIDs() throws -> Set<Int> {
+        try dbQueue.read { db in
+            Set(try Int.fetchAll(db, sql: "SELECT discogs_release_id FROM release WHERE discogs_release_id IS NOT NULL"))
+        }
+    }
+
     // MARK: - Facets
 
     /// Distinct non-empty genres present in the library (for the filter UI).

@@ -102,6 +102,15 @@ final class LibraryModel {
         availableFormats = (try? store.formats()) ?? []
     }
 
+    /// Builds an importer wired to this library's store and cover folder, and
+    /// refreshes the library as records stream in.
+    func makeDiscogsImporter(token: String) -> DiscogsCollectionImporter {
+        DiscogsCollectionImporter(token: token, store: store, libraryFolder: libraryFolder) { [weak self] in
+            self?.reload()
+            self?.refreshFacets()
+        }
+    }
+
     func setValue(amount: Double, currency: String, basis: String, for release: Release) {
         var updated = release
         updated.estimatedValue = amount

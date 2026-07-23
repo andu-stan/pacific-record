@@ -8,6 +8,8 @@ struct LibraryView: View {
     @State private var activeAdd: AddChoice?
     @State private var showSettings = false
     @State private var showFilter = false
+    @State private var showImport = false
+    @State private var pendingImport = false
     @State private var selecting = false
     @State private var selectedIDs: Set<String> = []
     @State private var confirmBulkDelete = false
@@ -16,7 +18,7 @@ struct LibraryView: View {
         NavigationStack {
             Group {
                 if model.isEmpty {
-                    EmptyLibraryView(onAdd: { showAdd = true }, onImport: { activeAdd = .search })
+                    EmptyLibraryView(onAdd: { showAdd = true }, onImport: { showImport = true })
                 } else {
                     content
                 }
@@ -49,15 +51,27 @@ struct LibraryView: View {
             if let choice = pendingAdd {
                 pendingAdd = nil
                 activeAdd = choice
+            } else if pendingImport {
+                pendingImport = false
+                showImport = true
             }
         }) {
-            AddEntrySheet { choice in
-                pendingAdd = choice
-                showAdd = false
-            }
+            AddEntrySheet(
+                onSelect: { choice in
+                    pendingAdd = choice
+                    showAdd = false
+                },
+                onImportCollection: {
+                    pendingImport = true
+                    showAdd = false
+                }
+            )
         }
         .sheet(item: $activeAdd) { choice in
             AddFlowContainer(choice: choice, library: model, onFinish: { activeAdd = nil })
+        }
+        .sheet(isPresented: $showImport) {
+            DiscogsImportView()
         }
         .sheet(isPresented: $showSettings) {
             NavigationStack { SettingsView() }.tint(Palette.tint)

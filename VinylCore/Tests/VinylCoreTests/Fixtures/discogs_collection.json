@@ -1,0 +1,42 @@
+{
+  "pagination": { "page": 1, "pages": 1, "items": 2, "per_page": 100 },
+  "releases": [
+    {
+      "id": 249504,
+      "instance_id": 1,
+      "rating": 5,
+      "basic_information": {
+        "id": 249504,
+        "title": "Kind Of Blue",
+        "year": 1959,
+        "cover_image": "https://img.discogs.com/kob.jpg",
+        "thumb": "https://img.discogs.com/kob-t.jpg",
+        "formats": [{ "name": "Vinyl", "qty": "1", "descriptions": ["LP", "Album", "45 RPM"] }],
+        "labels": [{ "name": "Columbia", "catno": "CS 8163" }],
+        "artists": [{ "name": "Miles Davis" }],
+        "genres": ["Jazz"],
+        "styles": ["Modal"]
+      },
+      "notes": [
+        { "field_id": 1, "value": "Near Mint (NM or M-)" },
+        { "field_id": 2, "value": "Very Good Plus (VG+)" }
+      ]
+    },
+    {
+      "id": 100,
+      "instance_id": 2,
+      "rating": 0,
+      "basic_information": {
+        "id": 100,
+        "title": "Blue Train",
+        "year": 1957,
+        "cover_image": "https://img.discogs.com/bt.jpg",
+        "formats": [{ "name": "Vinyl", "qty": "1", "descriptions": ["LP"] }],
+        "labels": [{ "name": "Blue Note", "catno": "BLP 1577" }],
+        "artists": [{ "name": "John Coltrane" }],
+        "genres": ["Jazz"],
+        "styles": ["Hard Bop"]
+      }
+    }
+  ]
+}

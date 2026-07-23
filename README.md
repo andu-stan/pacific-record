@@ -121,6 +121,13 @@ To enable it once you have a **paid Apple Developer** team:
     A **Select** mode turns rows/tiles into a multi-select with a bottom action
     bar to **reassign the location** of, or **delete**, many records at once
     (batched in a single transaction), plus Select-All over the filtered set.
+  - **Discogs collection import** — pull an entire Discogs collection into the
+    library in one go (empty-state button, or the Add menu → *Import Discogs
+    collection*). It resolves the username from the token, pages through the
+    collection, and imports each release — metadata, cover art, your Discogs
+    rating, and media/sleeve grades when set as Discogs custom fields — while
+    **skipping releases already saved**, so it doubles as a re-sync. Progress
+    is shown live and the import can be stopped mid-run.
 
 See the roadmap in [`docs/PLAN.md`](docs/PLAN.md).
 
