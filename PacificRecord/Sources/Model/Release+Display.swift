@@ -5,6 +5,10 @@ extension Release {
     /// Seed for the placeholder cover gradient.
     var coverSeed: String { title }
 
+    /// Cover to draw in lists and grids: the small on-disk thumbnail when we
+    /// have one, so browsing never decodes a full-resolution scan.
+    var listCoverPath: String? { thumbPath ?? coverPath }
+
     /// "Artist · 1959" for list rows.
     var listSubtitle: String {
         if let year { return "\(artistDisplay) · \(year)" }

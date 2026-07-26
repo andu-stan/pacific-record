@@ -14,63 +14,66 @@ public struct AppleArtworkClient {
     }
 
     /// Returns a high-resolution artwork URL for the album, or nil if there's no
-    /// confident match.
+    /// confident match. A result must match the *title*; matching only the
+    /// artist is never enough (that returns a different album by the same act).
     public func artworkURL(artist: String, title: String) async throws -> URL? {
-        let term = "\(artist) \(title)".trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !term.isEmpty else { return nil }
+        let cleanTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanArtist = artist.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanTitle.isEmpty else { return nil }
 
+        // Try the focused "artist title" query first, then the title alone —
+        // punctuation-heavy titles ("...And Justice for All") sometimes rank
+        // badly when combined with the artist.
+        var queries = ["\(cleanArtist) \(cleanTitle)".trimmingCharacters(in: .whitespaces)]
+        if !cleanArtist.isEmpty { queries.append(cleanTitle) }
+
+        for query in queries {
+            guard let url = Self.searchURL(term: query) else { continue }
+            guard let data = try? await http.data(from: url, headers: ["Accept": "application/json"]),
+                  let response = try? JSONDecoder().decode(ITunesSearchResponse.self, from: data)
+            else { continue }
+
+            if let best = Self.bestMatch(in: response.results, artist: cleanArtist, title: cleanTitle) {
+                return Self.highResURL(from: best.artworkUrl100, size: pixelSize)
+            }
+        }
+        return nil
+    }
+
+    static func searchURL(term: String) -> URL? {
         var components = URLComponents(string: "https://itunes.apple.com/search")
         components?.queryItems = [
             URLQueryItem(name: "term", value: term),
             URLQueryItem(name: "entity", value: "album"),
-            URLQueryItem(name: "limit", value: "10"),
+            URLQueryItem(name: "media", value: "music"),
+            URLQueryItem(name: "limit", value: "25"),
         ]
-        guard let url = components?.url else { return nil }
-
-        let data = try await http.data(from: url, headers: ["Accept": "application/json"])
-        let response = try JSONDecoder().decode(ITunesSearchResponse.self, from: data)
-        guard let best = Self.bestMatch(in: response.results, artist: artist, title: title) else { return nil }
-        return Self.highResURL(from: best.artworkUrl100, size: pixelSize)
+        return components?.url
     }
 
-    /// iTunes returns a 100×100 thumbnail URL; swap the size token for a larger
-    /// one — Apple's CDN serves the requested size from the source artwork.
+    /// iTunes returns a thumbnail URL with the size baked into the filename
+    /// ("…/100x100bb.jpg"); swap it for a larger one — Apple's CDN renders the
+    /// requested size from the source artwork.
     static func highResURL(from artworkUrl100: String?, size: Int) -> URL? {
         guard let artworkUrl100 else { return nil }
-        let hires = artworkUrl100.replacingOccurrences(of: "100x100bb", with: "\(size)x\(size)bb")
+        // Match any source size, not just 100x100 (Apple varies it).
+        let hires = artworkUrl100.replacingOccurrences(
+            of: "/[0-9]+x[0-9]+bb",
+            with: "/\(size)x\(size)bb",
+            options: .regularExpression
+        )
         return URL(string: hires)
     }
 
-    /// Picks the album whose artist and title best match, requiring a confident
-    /// score so a wrong cover is never substituted.
+    /// Picks the album whose title (and then artist) genuinely matches.
     static func bestMatch(in results: [ITunesAlbum], artist: String, title: String) -> ITunesAlbum? {
-        let wantTitle = normalize(title)
-        let wantArtist = normalize(artist)
-
-        func score(_ album: ITunesAlbum) -> Int {
-            let albumTitle = normalize(album.collectionName ?? "")
-            let albumArtist = normalize(album.artistName ?? "")
-            var score = 0
-            if !wantTitle.isEmpty {
-                if albumTitle == wantTitle { score += 3 }
-                else if albumTitle.contains(wantTitle) || wantTitle.contains(albumTitle) { score += 2 }
-            }
-            if !wantArtist.isEmpty {
-                if albumArtist == wantArtist { score += 3 }
-                else if albumArtist.contains(wantArtist) || wantArtist.contains(albumArtist) { score += 1 }
-            }
-            return score
-        }
-
-        let ranked = results
-            .map { (album: $0, score: score($0)) }
-            .sorted { $0.score > $1.score }
-        guard let top = ranked.first, top.score >= 3 else { return nil }
-        return top.album
-    }
-
-    static func normalize(_ text: String) -> String {
-        String(text.lowercased().unicodeScalars.filter { CharacterSet.alphanumerics.contains($0) })
+        ArtworkMatching.bestMatch(
+            in: results,
+            title: title,
+            artist: artist,
+            titleOf: { $0.collectionName ?? "" },
+            artistOf: { $0.artistName ?? "" }
+        )
     }
 }
 

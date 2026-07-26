@@ -1,0 +1,25 @@
+{
+  "resultCount": 4,
+  "results": [
+    {
+      "artistName": "Metallica",
+      "collectionName": "Metallica",
+      "artworkUrl100": "https://is1-ssl.mzstatic.com/image/thumb/Music/black/source/100x100bb.jpg"
+    },
+    {
+      "artistName": "Metallica",
+      "collectionName": "Master of Puppets (Remastered)",
+      "artworkUrl100": "https://is1-ssl.mzstatic.com/image/thumb/Music/puppets/source/100x100bb.jpg"
+    },
+    {
+      "artistName": "Metallica",
+      "collectionName": "...And Justice for All (Remastered)",
+      "artworkUrl100": "https://is1-ssl.mzstatic.com/image/thumb/Music/justice/source/100x100bb.jpg"
+    },
+    {
+      "artistName": "Apocalyptica",
+      "collectionName": "Plays Metallica by Four Cellos",
+      "artworkUrl100": "https://is1-ssl.mzstatic.com/image/thumb/Music/cellos/source/100x100bb.jpg"
+    }
+  ]
+}

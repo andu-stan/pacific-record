@@ -33,7 +33,7 @@ struct LibraryFilterView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
-                Button("Clear") { model.filter = LibraryFilter() }
+                Button("Clear") { model.clearFilter() }
                     .disabled(!model.filter.isActive)
             }
             ToolbarItem(placement: .topBarTrailing) {
@@ -46,13 +46,13 @@ struct LibraryFilterView: View {
 
     private var locationRow: some View {
         menuRow("Location", value: locationValue) {
-            checkItem("Any", isOn: model.filter.location == .any) { model.filter.location = .any }
-            checkItem("Unassigned", isOn: model.filter.location == .unassigned) { model.filter.location = .unassigned }
+            checkItem("Any", isOn: model.filter.location == .any) { model.updateFilter { $0.location = .any } }
+            checkItem("Unassigned", isOn: model.filter.location == .unassigned) { model.updateFilter { $0.location = .unassigned } }
             if !model.locations.isEmpty {
                 Divider()
                 ForEach(model.locations) { location in
                     checkItem(location.name, isOn: model.filter.location == .location(location.id)) {
-                        model.filter.location = .location(location.id)
+                        model.updateFilter { $0.location = .location(location.id) }
                     }
                 }
             }
@@ -61,11 +61,11 @@ struct LibraryFilterView: View {
 
     private var genreRow: some View {
         menuRow("Genre", value: model.filter.genre ?? "Any") {
-            checkItem("Any", isOn: model.filter.genre == nil) { model.filter.genre = nil }
+            checkItem("Any", isOn: model.filter.genre == nil) { model.updateFilter { $0.genre = nil } }
             if !model.availableGenres.isEmpty {
                 Divider()
                 ForEach(model.availableGenres, id: \.self) { genre in
-                    checkItem(genre, isOn: model.filter.genre == genre) { model.filter.genre = genre }
+                    checkItem(genre, isOn: model.filter.genre == genre) { model.updateFilter { $0.genre = genre } }
                 }
             }
         }
@@ -73,11 +73,11 @@ struct LibraryFilterView: View {
 
     private var formatRow: some View {
         menuRow("Format", value: model.filter.format ?? "Any") {
-            checkItem("Any", isOn: model.filter.format == nil) { model.filter.format = nil }
+            checkItem("Any", isOn: model.filter.format == nil) { model.updateFilter { $0.format = nil } }
             if !model.availableFormats.isEmpty {
                 Divider()
                 ForEach(model.availableFormats, id: \.self) { format in
-                    checkItem(format, isOn: model.filter.format == format) { model.filter.format = format }
+                    checkItem(format, isOn: model.filter.format == format) { model.updateFilter { $0.format = format } }
                 }
             }
         }
@@ -85,11 +85,11 @@ struct LibraryFilterView: View {
 
     private var conditionRow: some View {
         menuRow("Media condition", value: model.filter.mediaCondition?.displayName ?? "Any") {
-            checkItem("Any", isOn: model.filter.mediaCondition == nil) { model.filter.mediaCondition = nil }
+            checkItem("Any", isOn: model.filter.mediaCondition == nil) { model.updateFilter { $0.mediaCondition = nil } }
             Divider()
             ForEach(Condition.allCases, id: \.self) { condition in
                 checkItem(condition.displayName, isOn: model.filter.mediaCondition == condition) {
-                    model.filter.mediaCondition = condition
+                    model.updateFilter { $0.mediaCondition = condition }
                 }
             }
         }
@@ -97,9 +97,9 @@ struct LibraryFilterView: View {
 
     private var syncRow: some View {
         menuRow("Discogs", value: syncValue) {
-            checkItem("Any", isOn: model.filter.sync == .any) { model.filter.sync = .any }
-            checkItem("Synced", isOn: model.filter.sync == .synced) { model.filter.sync = .synced }
-            checkItem("Not synced", isOn: model.filter.sync == .notSynced) { model.filter.sync = .notSynced }
+            checkItem("Any", isOn: model.filter.sync == .any) { model.updateFilter { $0.sync = .any } }
+            checkItem("Synced", isOn: model.filter.sync == .synced) { model.updateFilter { $0.sync = .synced } }
+            checkItem("Not synced", isOn: model.filter.sync == .notSynced) { model.updateFilter { $0.sync = .notSynced } }
         }
     }
 
@@ -115,10 +115,10 @@ struct LibraryFilterView: View {
         VStack(alignment: .leading, spacing: 8) {
             SectionCaption(text: "Minimum rating")
             HStack(spacing: 8) {
-                ratingChip("Any", isOn: model.filter.minRating == 0) { model.filter.minRating = 0 }
+                ratingChip("Any", isOn: model.filter.minRating == 0) { model.updateFilter { $0.minRating = 0 } }
                 ForEach(1...5, id: \.self) { value in
                     ratingChip("\(value)", star: true, isOn: model.filter.minRating == value) {
-                        model.filter.minRating = value
+                        model.updateFilter { $0.minRating = value }
                     }
                 }
             }

@@ -1,0 +1,21 @@
+{
+  "data": [
+    {
+      "id": 1,
+      "title": "Metallica",
+      "cover": "https://cdn.deezer.com/black/56x56.jpg",
+      "cover_big": "https://cdn.deezer.com/black/500x500.jpg",
+      "cover_xl": "https://cdn.deezer.com/black/1000x1000.jpg",
+      "artist": { "name": "Metallica" }
+    },
+    {
+      "id": 2,
+      "title": "...And Justice for All (Remastered)",
+      "cover": "https://cdn.deezer.com/justice/56x56.jpg",
+      "cover_big": "https://cdn.deezer.com/justice/500x500.jpg",
+      "cover_xl": "https://cdn.deezer.com/justice/1000x1000.jpg",
+      "artist": { "name": "Metallica" }
+    }
+  ],
+  "total": 2
+}

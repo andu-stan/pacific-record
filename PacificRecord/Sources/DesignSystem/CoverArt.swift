@@ -89,12 +89,34 @@ struct CoverArtView: View {
     /// `.fill` crops to a square tile (grid/list/form); `.fit` shows the whole
     /// cover at its natural aspect ratio, uncropped (the detail page).
     var contentMode: ContentMode = .fill
+    /// Longest-edge pixel budget for decoding — see `CoverSize`.
+    var maxPixel: Int = CoverSize.tile
 
     @Environment(\.libraryFolderURL) private var libraryFolder
+    @State private var image: UIImage?
+
+    init(
+        seed: String,
+        coverPath: String? = nil,
+        cornerRadius: CGFloat = Metrics.tileRadius,
+        contentMode: ContentMode = .fill,
+        maxPixel: Int = CoverSize.tile
+    ) {
+        self.seed = seed
+        self.coverPath = coverPath
+        self.cornerRadius = cornerRadius
+        self.contentMode = contentMode
+        self.maxPixel = maxPixel
+        // Seed from the cache so an already-decoded cover draws on the first
+        // frame (no placeholder flash when scrolling back).
+        _image = State(initialValue: coverPath.flatMap {
+            CoverImageLoader.shared.cached(path: $0, maxPixel: maxPixel)
+        })
+    }
 
     var body: some View {
         Group {
-            if let image = localImage {
+            if let image {
                 if contentMode == .fit {
                     // Whole cover, no crop — the view takes the image's ratio.
                     Image(uiImage: image).resizable().scaledToFit()
@@ -110,11 +132,22 @@ struct CoverArtView: View {
         }
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
         .accessibilityHidden(true)
+        .task(id: coverPath) { await load() }
     }
 
-    private var localImage: UIImage? {
-        guard let coverPath, let libraryFolder else { return nil }
-        return UIImage(contentsOfFile: libraryFolder.appendingPathComponent(coverPath).path)
+    /// Decodes off the main thread; the loader caches, so re-appearing tiles
+    /// don't re-decode.
+    private func load() async {
+        guard let coverPath, let libraryFolder else {
+            image = nil
+            return
+        }
+        if let hit = CoverImageLoader.shared.cached(path: coverPath, maxPixel: maxPixel) {
+            image = hit
+            return
+        }
+        let url = libraryFolder.appendingPathComponent(coverPath)
+        image = await CoverImageLoader.shared.image(at: url, path: coverPath, maxPixel: maxPixel)
     }
 }
 

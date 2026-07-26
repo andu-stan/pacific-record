@@ -13,6 +13,7 @@ struct CoverViewer: View {
     @State private var steadyScale: CGFloat = 1
     @State private var offset: CGSize = .zero
     @State private var steadyOffset: CGSize = .zero
+    @State private var image: UIImage?
 
     private let maxScale: CGFloat = 5
 
@@ -70,10 +71,11 @@ struct CoverViewer: View {
             .padding(20)
         }
         .statusBarHidden()
+        .task { await loadCover() }
     }
 
     @ViewBuilder private var cover: some View {
-        if let image = localImage {
+        if let image {
             Image(uiImage: image)
                 .resizable()
                 .scaledToFit()
@@ -84,9 +86,12 @@ struct CoverViewer: View {
         }
     }
 
-    private var localImage: UIImage? {
-        guard let coverPath, let libraryFolder else { return nil }
-        return UIImage(contentsOfFile: libraryFolder.appendingPathComponent(coverPath).path)
+    /// Decoded off the main thread at a generous size — enough detail to zoom
+    /// into, without the full-resolution decode stalling the presentation.
+    private func loadCover() async {
+        guard let coverPath, let libraryFolder else { return }
+        let url = libraryFolder.appendingPathComponent(coverPath)
+        image = await CoverImageLoader.shared.image(at: url, path: coverPath, maxPixel: CoverSize.viewer)
     }
 
     private func toggleZoom() {

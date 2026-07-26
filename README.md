@@ -102,10 +102,14 @@ To enable it once you have a **paid Apple Developer** team:
     set, otherwise the lowest current listing) and lets you refresh it. Stored
     on the record (schema v2); the Library header shows the collection total.
   - **High-res cover art** — since Discogs images are user-uploaded scans,
-    imports resolve covers through **Apple Music → Cover Art Archive → Discogs**,
-    stopping at the first that has an image. Settings lets you pick the preferred
-    source, or turn on **"Choose cover when adding"** to hand-pick from every
-    found cover during import. The new/edit form's **"Choose cover art"** control
+    imports resolve covers through **Apple Music → Deezer → Cover Art Archive →
+    Discogs**, stopping at the first that has an image. Settings lets you pick
+    the preferred source, or turn on **"Choose cover when adding"** to hand-pick
+    from every found cover during import.
+    Results are accepted only on a genuine **title** match (fuzzy, ignoring
+    edition tags like "(Remastered)"/"(Super Deluxe)" and punctuation) — a
+    matching artist alone is never enough, which is what used to return a
+    different album by the same act. The new/edit form's **"Choose cover art"** control
     opens the same picker grid on demand, so you can pick a cover for a manual
     entry or swap one later. The grid includes **every image from the Discogs
     release** (front, back, labels…), not just the primary — so a poor scan isn't

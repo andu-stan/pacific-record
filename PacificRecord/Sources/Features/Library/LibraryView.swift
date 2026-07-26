@@ -150,7 +150,7 @@ struct LibraryView: View {
                 .foregroundStyle(Palette.secondary)
                 .multilineTextAlignment(.center)
             if model.filter.isActive {
-                Button("Clear filters") { model.filter = LibraryFilter() }
+                Button("Clear filters") { model.clearFilter() }
                     .font(.prHeadline)
                     .foregroundStyle(Palette.tint)
                     .padding(.top, 2)
@@ -417,7 +417,7 @@ struct LibraryGrid: View {
 
     private func cell(_ release: Release, selected: Bool) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            CoverArtView(seed: release.coverSeed, coverPath: release.coverPath)
+            CoverArtView(seed: release.coverSeed, coverPath: release.listCoverPath, maxPixel: CoverSize.tile)
                 .aspectRatio(1, contentMode: .fit)
                 .shadow(color: .black.opacity(0.5), radius: 7, y: 4)
                 .overlay {
@@ -500,7 +500,8 @@ struct LibraryRow: View {
                         .font(.system(size: 20))
                         .foregroundStyle(selected ? Palette.accent : Palette.quaternary)
                 }
-                CoverArtView(seed: release.coverSeed, coverPath: release.coverPath, cornerRadius: 6)
+                CoverArtView(seed: release.coverSeed, coverPath: release.listCoverPath,
+                             cornerRadius: 6, maxPixel: CoverSize.row)
                     .frame(width: 52, height: 52)
                     .shadow(color: .black.opacity(0.5), radius: 4, y: 2)
                 VStack(alignment: .leading, spacing: 2) {

@@ -4,7 +4,10 @@ import GRDB
 /// The library repository over a SQLite database. Owns schema migrations, CRUD,
 /// and full-text search. It's handed a file path — the app points it at the
 /// `library.sqlite` file inside the iCloud container; tests use a temp file.
-public final class LibraryStore {
+/// Safe to use from any isolation context: all state is the GRDB
+/// `DatabaseQueue`, which serializes access internally. This lets callers move
+/// blocking writes (a bulk import, say) off the main thread.
+public final class LibraryStore: @unchecked Sendable {
     private let dbQueue: DatabaseQueue
 
     public enum SortOrder: Sendable, CaseIterable {
@@ -367,10 +370,22 @@ public final class LibraryStore {
     /// Backfills the synced marker for the record with this Discogs release id,
     /// if not already set — used when (re-)importing a collection.
     public func markDiscogsSynced(discogsReleaseID: Int, at date: Date = Date()) throws {
+        try markDiscogsSynced(discogsReleaseIDs: [discogsReleaseID], at: date)
+    }
+
+    /// Batch form: one transaction for a whole page of a collection import,
+    /// rather than one per record.
+    public func markDiscogsSynced(discogsReleaseIDs ids: [Int], at date: Date = Date()) throws {
+        guard !ids.isEmpty else { return }
         try dbQueue.write { db in
+            let placeholders = databaseQuestionMarks(count: ids.count)
             let releases = try Release.fetchAll(
-                db, sql: "SELECT * FROM release WHERE discogs_release_id = ? AND discogs_synced_at IS NULL",
-                arguments: [discogsReleaseID])
+                db,
+                sql: """
+                    SELECT * FROM release
+                    WHERE discogs_release_id IN (\(placeholders)) AND discogs_synced_at IS NULL
+                    """,
+                arguments: StatementArguments(ids))
             for var release in releases {
                 release.discogsSyncedAt = date
                 try release.update(db)

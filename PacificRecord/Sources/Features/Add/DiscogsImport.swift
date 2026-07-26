@@ -77,16 +77,21 @@ final class DiscogsCollectionImporter {
                 totalPages = max(1, result.totalPages)
                 if page == 1 { total = result.totalItems }
 
+                var alreadyPresent: [Int] = []
                 for entry in result.items {
                     if Task.isCancelled { finish(.cancelled); return }
                     if let rid = entry.match.discogsReleaseID, existing.contains(rid) {
-                        try? store.markDiscogsSynced(discogsReleaseID: rid) // backfill the synced marker
+                        alreadyPresent.append(rid)
                         skipped += 1
                         continue
                     }
                     await importEntry(entry)
                     if let rid = entry.match.discogsReleaseID { existing.insert(rid) }
                 }
+                // Backfill the synced marker for the whole page in one
+                // transaction — a re-import skips everything, and doing this per
+                // record meant hundreds of separate writes.
+                await write { try $0.markDiscogsSynced(discogsReleaseIDs: alreadyPresent) }
                 onChange() // let the library grid fill in as we go
                 page += 1
             } while page <= totalPages
@@ -117,8 +122,16 @@ final class DiscogsCollectionImporter {
             mediaCondition: entry.mediaCondition, sleeveCondition: entry.sleeveCondition,
             rating: entry.rating)
         detail.release.discogsSyncedAt = Date() // imported records are already in the Discogs collection
-        try? store.save(detail)
+        let saved = detail
+        await write { try $0.save(saved) }
         imported += 1
+    }
+
+    /// Runs a blocking database write off the main thread. Importing a large
+    /// collection is hundreds of writes; on the main actor they stuttered the UI.
+    private func write(_ work: @escaping @Sendable (LibraryStore) throws -> Void) async {
+        let store = self.store
+        await Task.detached(priority: .utility) { try? work(store) }.value
     }
 
     private func finish(_ phase: Phase) {

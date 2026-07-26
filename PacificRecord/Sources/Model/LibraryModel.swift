@@ -21,9 +21,22 @@ final class LibraryModel {
     var sort: LibraryStore.SortOrder = .artist
     var layout: LibraryLayout = .grid
     var locations: [Location] = []
-    var filter = LibraryFilter()
     var availableGenres: [String] = []
     var availableFormats: [String] = []
+
+    /// Mutated only through `setFilter`/`updateFilter` so the derived state
+    /// below can never go stale.
+    private(set) var filter = LibraryFilter()
+
+    /// The records actually shown: the fetched list narrowed by the facet
+    /// filter. Stored rather than computed — the Library screen reads this (and
+    /// the counts below) several times per render, and re-filtering the whole
+    /// library each time showed up while scrolling and during selection.
+    private(set) var visibleRecords: [Release] = []
+    private(set) var artistCount = 0
+    /// Sum of the visible records' estimated value, grouped by currency (so it
+    /// reflects the current filter).
+    private(set) var totalValueByCurrency: [String: Double] = [:]
 
     init(store: LibraryStore, libraryFolder: URL) {
         self.store = store
@@ -33,16 +46,7 @@ final class LibraryModel {
         refreshFacets()
     }
 
-    /// The records actually shown: the fetched list narrowed by the facet filter.
-    var visibleRecords: [Release] {
-        filter.isActive ? records.filter(filter.matches) : records
-    }
-
     var count: Int { visibleRecords.count }
-
-    var artistCount: Int {
-        Set(visibleRecords.map(\.artistDisplay)).count
-    }
 
     /// True only when the whole library is empty (not merely filtered/searched
     /// to nothing) — that's when the onboarding empty state should show.
@@ -57,6 +61,43 @@ final class LibraryModel {
         } catch {
             records = []
         }
+        applyFilter()
+    }
+
+    // MARK: Filtering
+
+    func setFilter(_ newValue: LibraryFilter) {
+        filter = newValue
+        applyFilter()
+    }
+
+    /// Change one facet in place, e.g. `updateFilter { $0.sync = .notSynced }`.
+    func updateFilter(_ mutate: (inout LibraryFilter) -> Void) {
+        var updated = filter
+        mutate(&updated)
+        setFilter(updated)
+    }
+
+    func clearFilter() {
+        setFilter(LibraryFilter())
+    }
+
+    /// Recomputes the visible list and its summary counts. Called whenever the
+    /// records or the filter change.
+    private func applyFilter() {
+        visibleRecords = filter.isActive ? records.filter(filter.matches) : records
+
+        var artists = Set<String>()
+        var totals: [String: Double] = [:]
+        artists.reserveCapacity(visibleRecords.count)
+        for record in visibleRecords {
+            artists.insert(record.artistDisplay)
+            if let amount = record.estimatedValue, let currency = record.valueCurrency {
+                totals[currency, default: 0] += amount
+            }
+        }
+        artistCount = artists.count
+        totalValueByCurrency = totals
     }
 
     func detail(for release: Release) -> RecordDetail? {
@@ -185,18 +226,6 @@ final class LibraryModel {
         try? store.deleteLocation(id: id)
         reloadLocations()
         reload()
-    }
-
-    /// Sum of the visible records' estimated value, grouped by currency (so it
-    /// reflects the current filter).
-    var totalValueByCurrency: [String: Double] {
-        var totals: [String: Double] = [:]
-        for record in visibleRecords {
-            if let amount = record.estimatedValue, let currency = record.valueCurrency {
-                totals[currency, default: 0] += amount
-            }
-        }
-        return totals
     }
 
     /// Formatted collection total, e.g. "$312.50" (or several, joined, if the

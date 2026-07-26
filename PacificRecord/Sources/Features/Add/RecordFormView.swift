@@ -160,7 +160,8 @@ struct RecordFormView: View {
         Button(action: replaceCover) {
             HStack(spacing: 16) {
                 ZStack {
-                    CoverArtView(seed: title.isEmpty ? artist : title, coverPath: coverPath, cornerRadius: 10)
+                    CoverArtView(seed: title.isEmpty ? artist : title, coverPath: coverPath,
+                                 cornerRadius: 10, maxPixel: CoverSize.form)
                         .frame(width: 88, height: 88)
                         .shadow(color: .black.opacity(0.5), radius: 8, y: 6)
                     if isFetchingCover {
