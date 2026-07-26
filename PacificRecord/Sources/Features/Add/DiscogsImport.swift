@@ -90,8 +90,10 @@ final class DiscogsCollectionImporter {
                 }
                 // Backfill the synced marker for the whole page in one
                 // transaction — a re-import skips everything, and doing this per
-                // record meant hundreds of separate writes.
-                await write { try $0.markDiscogsSynced(discogsReleaseIDs: alreadyPresent) }
+                // record meant hundreds of separate writes. Copied to a `let`
+                // so the sendable closure captures a value, not the loop's var.
+                let pageAlreadyPresent = alreadyPresent
+                await write { try $0.markDiscogsSynced(discogsReleaseIDs: pageAlreadyPresent) }
                 onChange() // let the library grid fill in as we go
                 page += 1
             } while page <= totalPages
