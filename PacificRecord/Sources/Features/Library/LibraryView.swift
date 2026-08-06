@@ -13,6 +13,7 @@ struct LibraryView: View {
     @State private var selecting = false
     @State private var selectedIDs: Set<String> = []
     @State private var confirmBulkDelete = false
+    @FocusState private var searchFocused: Bool
 
     var body: some View {
         NavigationStack {
@@ -30,7 +31,10 @@ struct LibraryView: View {
             }
             .toolbar { toolbarContent }
             .tint(Palette.tint)
-            .safeAreaInset(edge: .bottom) {
+            // An overlay rather than `safeAreaInset`: the inset was applied even
+            // when not selecting, and it competed with SwiftUI's keyboard
+            // avoidance, leaving the last rows underneath the keyboard.
+            .overlay(alignment: .bottom) {
                 if selecting {
                     BulkActionBar(
                         count: selectedIDs.count,
@@ -111,6 +115,21 @@ struct LibraryView: View {
                         .foregroundStyle(Palette.label)
                         .autocorrectionDisabled()
                         .textInputAutocapitalization(.never)
+                        .focused($searchFocused)
+                        .submitLabel(.search)
+                        .onSubmit { searchFocused = false }
+                    if !model.searchText.isEmpty {
+                        Button {
+                            model.searchText = ""
+                            model.reload()
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 15))
+                                .foregroundStyle(Palette.tertiary)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Clear search")
+                    }
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 10)
@@ -136,8 +155,13 @@ struct LibraryView: View {
                 }
             }
             .padding(.horizontal, Metrics.screenPadding)
-            .padding(.bottom, 28)
+            // Extra room so the floating bulk-action bar doesn't sit on top of
+            // the last row while selecting.
+            .padding(.bottom, selecting ? 96 : 28)
         }
+        // Swiping the list down dismisses the keyboard — the search field is
+        // inside the scroll view, so there was otherwise no way to put it away.
+        .scrollDismissesKeyboard(.interactively)
     }
 
     private var emptyResults: some View {
@@ -199,6 +223,11 @@ struct LibraryView: View {
                     .accessibilityLabel("Add record")
             }
         }
+        // Always reachable way to put the keyboard away.
+        ToolbarItemGroup(placement: .keyboard) {
+            Spacer()
+            Button("Done") { searchFocused = false }
+        }
     }
 
     // MARK: Selection
@@ -218,6 +247,7 @@ struct LibraryView: View {
     }
 
     private func enterSelection() {
+        searchFocused = false   // the keyboard has no place in selection mode
         selectedIDs = []
         withAnimation(.easeInOut(duration: 0.2)) { selecting = true }
     }
@@ -371,7 +401,11 @@ struct BulkActionBar: View {
         .padding(.horizontal, Metrics.screenPadding)
         .padding(.top, 10)
         .padding(.bottom, 4)
-        .background(.ultraThinMaterial)
+        // Extends the blur behind the home indicator; as an overlay (rather
+        // than a safe-area inset) the bar sits inside the safe area.
+        .background {
+            Rectangle().fill(.ultraThinMaterial).ignoresSafeArea(edges: .bottom)
+        }
         .overlay(alignment: .top) { Rectangle().fill(Palette.separator).frame(height: 1) }
     }
 
