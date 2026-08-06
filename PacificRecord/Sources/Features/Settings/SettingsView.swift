@@ -9,6 +9,7 @@ struct SettingsView: View {
     @AppStorage(CoverSource.storageKey) private var coverSourceRaw = CoverSource.appleMusic.rawValue
     @AppStorage(CoverArtResolver.pickCoverOnImportKey) private var pickCoverOnImport = false
     @AppStorage(DiscogsCollectionSync.autoSyncKey) private var syncToDiscogs = false
+    @AppStorage(RecordValueService.currencyKey) private var currency = "USD"
     @State private var showTokenEntry = false
     @State private var tokenDraft = ""
 
@@ -18,6 +19,7 @@ struct SettingsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
                 metadataSection
+                valueSection
                 coverArtSection
                 locationsSection
                 storageSection
@@ -115,6 +117,91 @@ struct SettingsView: View {
             }
             .padding(.vertical, 12)
             if divider { HRule() }
+        }
+    }
+
+    // MARK: Value
+
+    private var valueSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            SectionCaption(text: "Value")
+            GroupedCard(radius: 14) {
+                VStack(spacing: 0) {
+                    Menu {
+                        ForEach(DiscogsCurrency.supported, id: \.self) { code in
+                            Button {
+                                currency = code
+                            } label: {
+                                if code == currency {
+                                    Label(code, systemImage: "checkmark")
+                                } else {
+                                    Text(code)
+                                }
+                            }
+                        }
+                    } label: {
+                        HStack {
+                            Text("Currency").font(.prBody).foregroundStyle(Palette.label)
+                            Spacer()
+                            Text(currency).font(.prBody).foregroundStyle(Palette.secondary)
+                            Image(systemName: "chevron.up.chevron.down")
+                                .font(.system(size: 12)).foregroundStyle(Palette.tertiary)
+                        }
+                        .padding(.vertical, 12)
+                    }
+                    HRule()
+                    refreshValuesRow
+                }
+            }
+            Text("Values come from Discogs. Condition-based suggestions are priced in your Discogs account's currency; the lowest-listing fallback uses the currency above.")
+                .font(.prSmall).foregroundStyle(Palette.tertiary)
+                .padding(.horizontal, 4)
+        }
+    }
+
+    @ViewBuilder
+    private var refreshValuesRow: some View {
+        let refresh = library.valueRefresh
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Update all values").font(.prBody).foregroundStyle(Palette.label)
+                    Text(refreshStatus(refresh))
+                        .font(.prSmall).foregroundStyle(Palette.tertiary)
+                }
+                Spacer()
+                if refresh.isRunning {
+                    Button("Stop") { refresh.cancel() }
+                        .font(.prFootnote).foregroundStyle(Palette.danger)
+                } else {
+                    Button("Update") { library.startValueRefresh() }
+                        .font(.prFootnote).foregroundStyle(Palette.tint)
+                        .disabled(token.isEmpty)
+                }
+            }
+            if refresh.isRunning {
+                ProgressView(value: refresh.progress)
+                    .tint(Palette.accent)
+            }
+        }
+        .padding(.vertical, 12)
+        .animation(.easeInOut(duration: 0.2), value: refresh.isRunning)
+    }
+
+    private func refreshStatus(_ refresh: ValueRefreshCoordinator) -> String {
+        switch refresh.phase {
+        case .idle:
+            let count = ValueRefreshCoordinator.candidates(in: library.records).count
+            if token.isEmpty { return "Add a Discogs token to fetch values" }
+            return count == 0 ? "No records linked to Discogs" : "\(count) records can be priced"
+        case .running:
+            return "\(refresh.completed) of \(refresh.total) · keep the app open"
+        case let .finished(updated, failed):
+            var text = "Updated \(updated)"
+            if failed > 0 { text += " · \(failed) had no price" }
+            return text
+        case let .cancelled(updated):
+            return "Stopped after \(updated)"
         }
     }
 

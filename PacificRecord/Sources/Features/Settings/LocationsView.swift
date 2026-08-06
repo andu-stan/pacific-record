@@ -46,6 +46,7 @@ struct LocationsView: View {
             .padding(.vertical, 8)
         }
         .background(Palette.background)
+        .refreshable { model.reloadLocations() }
         .navigationTitle("Locations")
         .navigationBarTitleDisplayMode(.inline)
         .alert("New location", isPresented: $showAdd) {

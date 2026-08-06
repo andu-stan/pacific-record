@@ -62,7 +62,14 @@ struct RecordDetailScreen: View {
                     syncOutcome: syncOutcome,
                     onAddToDiscogs: { addToDiscogs(detail.release) },
                     onEstimate: { estimateValue(detail.release) },
-                    onDelete: { confirmDelete = true }
+                    onDelete: { confirmDelete = true },
+                    onRefresh: {
+                        model.refreshAll()
+                        // Pick up a value written by a background refresh.
+                        if let fresh = model.detail(id: recordID)?.release {
+                            estimate = StoredValue(release: fresh)
+                        }
+                    }
                 )
                 .onAppear {
                     if !didLoadEstimate {
@@ -143,6 +150,7 @@ struct RecordDetailContent: View {
     var onAddToDiscogs: () -> Void = {}
     var onEstimate: () -> Void
     var onDelete: () -> Void
+    var onRefresh: () async -> Void = {}
 
     @State private var showCover = false
 
@@ -188,6 +196,7 @@ struct RecordDetailContent: View {
             .padding(.horizontal, Metrics.screenPadding)
             .padding(.bottom, 30)
         }
+        .refreshable { await onRefresh() }
         .fullScreenCover(isPresented: $showCover) {
             CoverViewer(seed: release.coverSeed, coverPath: release.coverPath)
         }

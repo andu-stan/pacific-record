@@ -406,16 +406,19 @@ struct RecordFormView: View {
     }
 
     private func gradeChip(_ condition: Condition, selected: Bool, action: @escaping () -> Void) -> some View {
-        let palette = conditionPalette(condition)
-        return Button(action: action) {
+        Button(action: action) {
             Text(condition.rawValue)
                 .font(.system(size: 12, weight: .bold))
-                .foregroundStyle(selected ? palette.text : Palette.tertiary)
+                // Selected chips fill solid with white text so every grade reads
+                // clearly — the tinted style was invisible for VG and below.
+                .foregroundStyle(selected ? Color.white : Palette.tertiary)
                 .padding(.horizontal, 8).padding(.vertical, 4)
-                .background(selected ? palette.fill : Palette.fill,
+                .background(selected ? conditionSolidColor(condition) : Palette.fill,
                            in: RoundedRectangle(cornerRadius: 7, style: .continuous))
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(condition.displayName)
+        .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
     }
 
     // MARK: Save
@@ -469,6 +472,8 @@ struct RecordFormView: View {
         if mode.editingID == nil {
             model.autoSyncToDiscogs(release)
         }
+        // With both grades set we can price the record; runs in the background.
+        model.autoEstimateValue(for: release)
         finish()
     }
 

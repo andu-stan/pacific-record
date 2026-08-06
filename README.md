@@ -101,6 +101,12 @@ To enable it once you have a **paid Apple Developer** team:
     market value (a price suggestion for its media condition when a token is
     set, otherwise the lowest current listing) and lets you refresh it. Stored
     on the record (schema v2); the Library header shows the collection total.
+    The value is fetched **automatically once both media and sleeve are
+    graded** (and re-fetched after a re-grade, since the price is
+    condition-specific). Settings holds a **currency** preference and an
+    **Update all values** run — paced by a single rate-limited client, shown as
+    an inline progress bar, cancellable, and it keeps going if you leave the
+    Settings sheet.
   - **High-res cover art** — since Discogs images are user-uploaded scans,
     imports resolve covers through **Apple Music → Deezer → Cover Art Archive →
     Discogs**, stopping at the first that has an image. Settings lets you pick

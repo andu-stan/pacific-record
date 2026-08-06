@@ -162,6 +162,7 @@ struct LibraryView: View {
         // Swiping the list down dismisses the keyboard — the search field is
         // inside the scroll view, so there was otherwise no way to put it away.
         .scrollDismissesKeyboard(.interactively)
+        .refreshable { model.refreshAll() }
     }
 
     private var emptyResults: some View {

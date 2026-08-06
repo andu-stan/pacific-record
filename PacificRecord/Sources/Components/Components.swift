@@ -16,6 +16,17 @@ func conditionPalette(_ condition: Condition) -> (text: Color, fill: Color) {
     }
 }
 
+/// Solid fill for a *selected* grade chip, paired with white text. The tinted
+/// palette above is too close to the unselected style for the lower grades.
+func conditionSolidColor(_ condition: Condition) -> Color {
+    switch condition {
+    case .mint, .nearMint:          return Palette.gradeGreenSolid
+    case .veryGoodPlus, .veryGood:  return Palette.gradeAmberSolid
+    case .goodPlus, .good:          return Palette.gradeSlateSolid
+    case .fair, .poor:              return Palette.gradeRedSolid
+    }
+}
+
 struct ConditionBadge: View {
     let condition: Condition
     var fontSize: CGFloat = 13

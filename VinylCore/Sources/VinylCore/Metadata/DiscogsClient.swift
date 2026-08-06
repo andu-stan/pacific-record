@@ -104,14 +104,23 @@ public struct DiscogsClient: MetadataProvider {
     }
 
     /// The lowest current marketplace listing for a release (any condition),
-    /// read from the release resource. Works unauthenticated.
-    public func lowestListingPrice(releaseID: Int) async throws -> Money? {
+    /// read from the release resource. Works unauthenticated. Discogs converts
+    /// the price when given a `curr_abbr`; see `DiscogsCurrency`.
+    public func lowestListingPrice(releaseID: Int, currency: String? = nil) async throws -> Money? {
         await limiter.waitForTurn()
-        let url = baseURL.appendingPathComponent("releases/\(releaseID)")
+        var components = URLComponents(
+            url: baseURL.appendingPathComponent("releases/\(releaseID)"),
+            resolvingAgainstBaseURL: false
+        )
+        if let currency, DiscogsCurrency.isSupported(currency) {
+            components?.queryItems = [URLQueryItem(name: "curr_abbr", value: currency)]
+        }
+        guard let url = components?.url else { throw MetadataError.invalidURL }
         let data = try await http.data(from: url, headers: headers)
         let detail = try Self.decoder.decode(DiscogsReleaseDetail.self, from: data)
         guard let price = detail.lowestPrice else { return nil }
-        return Money(amount: price, currency: "USD")
+        // Discogs echoes the currency it priced in; fall back to the request.
+        return Money(amount: price, currency: currency ?? "USD")
     }
 
     // MARK: - Collection
@@ -387,6 +396,24 @@ public struct DiscogsClient: MetadataProvider {
         case 3: return numbers[0] * 3600 + numbers[1] * 60 + numbers[2]
         default: return nil
         }
+    }
+}
+
+// MARK: - Currency
+
+/// Currencies Discogs will convert marketplace prices into (`curr_abbr`).
+///
+/// Note this only applies to the *lowest listing* lookup. Discogs returns
+/// per-condition price **suggestions** in the currency configured on the
+/// account that owns the API token, and offers no way to override it.
+public enum DiscogsCurrency {
+    public static let supported = [
+        "USD", "GBP", "EUR", "CAD", "AUD", "JPY",
+        "CHF", "MXN", "BRL", "NZD", "SEK", "ZAR",
+    ]
+
+    public static func isSupported(_ code: String) -> Bool {
+        supported.contains(code.uppercased())
     }
 }
 

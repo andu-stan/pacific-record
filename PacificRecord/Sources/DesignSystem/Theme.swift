@@ -75,6 +75,15 @@ enum Palette {
     static let badgeAmberFill = Color(hex: 0xD2691E, opacity: 0.16)
     static let badgeNeutralFill = adaptiveColor(dark: UIColor(white: 1, alpha: 0.10),
                                                 light: UIColor(hex: 0x3C3C43, alpha: 0.10))
+
+    // Solid grade colours for the *selected* condition chip. The tinted badge
+    // palettes above are for display; when picking a grade the selection has to
+    // read unmistakably, so the chip fills with one of these and uses white
+    // text (the lower grades previously used grey-on-grey and looked unset).
+    static let gradeGreenSolid = adaptiveColor(dark: UIColor(hex: 0x2A9D4F), light: UIColor(hex: 0x1A8A3A))
+    static let gradeAmberSolid = adaptiveColor(dark: UIColor(hex: 0xC85D17), light: UIColor(hex: 0xA34E0D))
+    static let gradeSlateSolid = adaptiveColor(dark: UIColor(hex: 0x6E6E73), light: UIColor(hex: 0x5A5A5F))
+    static let gradeRedSolid = adaptiveColor(dark: UIColor(hex: 0xD03A3F), light: UIColor(hex: 0xB02427))
 }
 
 // MARK: - Typography (SF Pro / system font only)

@@ -38,12 +38,29 @@ final class LibraryModel {
     /// reflects the current filter).
     private(set) var totalValueByCurrency: [String: Double] = [:]
 
+    /// Drives the "update every value" run from Settings; lives here so it
+    /// keeps going after that sheet is dismissed.
+    private(set) var valueRefresh: ValueRefreshCoordinator
+
     init(store: LibraryStore, libraryFolder: URL) {
         self.store = store
         self.libraryFolder = libraryFolder
+        self.valueRefresh = ValueRefreshCoordinator(store: store)
         reload()
         reloadLocations()
         refreshFacets()
+        valueRefresh.onChange = { [weak self] in self?.reload() }
+    }
+
+    /// Re-reads everything — the pull-to-refresh entry point.
+    func refreshAll() {
+        reload()
+        reloadLocations()
+        refreshFacets()
+    }
+
+    func startValueRefresh() {
+        valueRefresh.start(records: records)
     }
 
     var count: Int { visibleRecords.count }
@@ -173,6 +190,19 @@ final class LibraryModel {
     func autoSyncToDiscogs(_ release: Release) {
         guard DiscogsCollectionSync.autoSyncEnabled, release.discogsReleaseID != nil else { return }
         Task { await syncToDiscogs(release) }
+    }
+
+    /// Looks the value up in the background once a record is fully graded —
+    /// the estimate is condition-specific, so this also re-runs after a re-grade.
+    func autoEstimateValue(for release: Release) {
+        guard release.mediaCondition != nil, release.sleeveCondition != nil else { return }
+        guard RecordValueService.needsValue(release) else { return }
+        Task {
+            if let estimate = await RecordValueService.fetch(for: release) {
+                setValue(amount: estimate.amount, currency: estimate.currency,
+                         basis: estimate.basis, for: release)
+            }
+        }
     }
 
     func setValue(amount: Double, currency: String, basis: String, for release: Release) {
