@@ -527,6 +527,8 @@ struct LibraryRow: View {
     var selecting: Bool = false
     var selected: Bool = false
 
+    @AppStorage(RecordValueService.showValueInListKey) private var showValue = false
+
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 13) {
@@ -550,8 +552,16 @@ struct LibraryRow: View {
                         .lineLimit(1)
                 }
                 Spacer(minLength: 8)
-                if let media = release.mediaCondition {
-                    GradePill(text: media.rawValue)
+                VStack(alignment: .trailing, spacing: 4) {
+                    if showValue, let value = release.formattedValue {
+                        Text(value)
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(Palette.label)
+                            .lineLimit(1)
+                    }
+                    if let media = release.mediaCondition {
+                        GradePill(text: media.rawValue)
+                    }
                 }
                 if !selecting {
                     Image(systemName: "chevron.right")

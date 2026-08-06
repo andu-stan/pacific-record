@@ -9,6 +9,12 @@ extension Release {
     /// have one, so browsing never decodes a full-resolution scan.
     var listCoverPath: String? { thumbPath ?? coverPath }
 
+    /// "$42.00" when the record has been valued, else nil.
+    var formattedValue: String? {
+        guard let amount = estimatedValue, let currency = valueCurrency else { return nil }
+        return amount.formatted(.currency(code: currency))
+    }
+
     /// "Artist · 1959" for list rows.
     var listSubtitle: String {
         if let year { return "\(artistDisplay) · \(year)" }

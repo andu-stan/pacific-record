@@ -16,6 +16,7 @@ public final class LibraryStore: @unchecked Sendable {
         case yearDescending
         case dateAddedDescending
         case ratingDescending
+        case valueDescending
     }
 
     /// Opens (creating if needed) the database at `path` and runs migrations.
@@ -455,6 +456,9 @@ public final class LibraryStore: @unchecked Sendable {
             return "added_at DESC"
         case .ratingDescending:
             return "rating DESC, artist_display COLLATE NOCASE ASC"
+        case .valueDescending:
+            // Unvalued records sort last, the same way unknown years do.
+            return "(estimated_value IS NULL) ASC, estimated_value DESC, artist_display COLLATE NOCASE ASC"
         }
     }
 

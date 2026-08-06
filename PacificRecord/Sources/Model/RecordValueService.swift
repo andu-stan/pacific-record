@@ -14,6 +14,10 @@ enum RecordValueService {
     /// UserDefaults key for the preferred marketplace currency.
     static let currencyKey = "discogsCurrency"
 
+    /// UserDefaults key: show each record's value in the Library list. Off by
+    /// default — most browsing doesn't want prices on screen.
+    static let showValueInListKey = "showValueInList"
+
     /// The currency to price in. Discogs honours this for the lowest-listing
     /// lookup; condition suggestions come back in the token account's currency.
     static var preferredCurrency: String {

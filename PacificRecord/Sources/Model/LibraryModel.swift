@@ -281,6 +281,7 @@ extension LibraryStore.SortOrder {
         case .yearDescending: return "Year"
         case .dateAddedDescending: return "Recently added"
         case .ratingDescending: return "Rating"
+        case .valueDescending: return "Value"
         }
     }
 }

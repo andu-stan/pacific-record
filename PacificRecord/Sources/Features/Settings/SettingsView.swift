@@ -10,6 +10,7 @@ struct SettingsView: View {
     @AppStorage(CoverArtResolver.pickCoverOnImportKey) private var pickCoverOnImport = false
     @AppStorage(DiscogsCollectionSync.autoSyncKey) private var syncToDiscogs = false
     @AppStorage(RecordValueService.currencyKey) private var currency = "USD"
+    @AppStorage(RecordValueService.showValueInListKey) private var showValueInList = false
     @State private var showTokenEntry = false
     @State private var tokenDraft = ""
     @State private var exportFile: LibraryExporter.ExportFile?
@@ -164,10 +165,17 @@ struct SettingsView: View {
                         .padding(.vertical, 12)
                     }
                     HRule()
+                    HStack {
+                        Text("Show value in list").font(.prBody).foregroundStyle(Palette.label)
+                        Spacer()
+                        Toggle("", isOn: $showValueInList).labelsHidden().tint(Palette.accent)
+                    }
+                    .padding(.vertical, 6)
+                    HRule()
                     refreshValuesRow
                 }
             }
-            Text("Values come from Discogs. Condition-based suggestions are priced in your Discogs account's currency; the lowest-listing fallback uses the currency above.")
+            Text("Values come from Discogs. Condition-based suggestions are priced in your Discogs account's currency; the lowest-listing fallback uses the currency above. “Show value in list” adds the price to each row in the Library's list layout.")
                 .font(.prSmall).foregroundStyle(Palette.tertiary)
                 .padding(.horizontal, 4)
         }
