@@ -161,7 +161,11 @@ struct RecordDetailContent: View {
             VStack(spacing: 0) {
                 CoverArtView(seed: release.coverSeed, coverPath: release.coverPath,
                              cornerRadius: 12, contentMode: .fit, maxPixel: CoverSize.detail)
-                    .frame(maxWidth: 236, maxHeight: 236)
+                    // A definite box: the cover is loaded asynchronously, and a
+                    // flexible max-only frame let the placeholder collapse to
+                    // zero height until it arrived. `.fit` still shows the whole
+                    // cover, letterboxed inside this square.
+                    .frame(width: 236, height: 236)
                     .shadow(color: .black.opacity(0.85), radius: 30, y: 24)
                     .padding(.top, 6)
                     .contentShape(Rectangle())

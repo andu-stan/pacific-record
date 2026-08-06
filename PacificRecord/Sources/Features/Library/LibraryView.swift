@@ -42,6 +42,10 @@ struct LibraryView: View {
                         onAssign: assignLocation,
                         onDelete: { confirmBulkDelete = true }
                     )
+                    // Slide it in at full height; without a transition the
+                    // material background gets rendered at zero height as the
+                    // bar appears, which the render server complains about.
+                    .transition(.move(edge: .bottom))
                 }
             }
             .confirmationDialog(bulkDeleteTitle, isPresented: $confirmBulkDelete, titleVisibility: .visible) {
