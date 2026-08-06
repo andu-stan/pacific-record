@@ -125,6 +125,12 @@ To enable it once you have a **paid Apple Developer** team:
     set a default); the add/edit form has a location picker that preselects the
     default and can create a new location inline; the detail screen shows it.
     Deleting a location unassigns its records rather than deleting them.
+  - **Export & share** — Settings › Storage › **Export library** produces
+    either a **.zip** (database + every cover — a complete backup) or the
+    **.sqlite** database on its own, and hands it to the standard iOS share
+    sheet (Files, AirDrop, Mail…). The snapshot uses SQLite's `VACUUM INTO`, so
+    it's a consistent, compacted copy of the live database rather than a raw
+    file copy.
   - **Filter & bulk actions** — the Library's **Filter** control narrows the
     list by location (incl. *Unassigned*), genre, format, media condition,
     minimum rating, and **Discogs sync status** (*Synced* / *Not synced*); the

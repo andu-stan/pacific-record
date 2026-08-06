@@ -12,6 +12,9 @@ struct SettingsView: View {
     @AppStorage(RecordValueService.currencyKey) private var currency = "USD"
     @State private var showTokenEntry = false
     @State private var tokenDraft = ""
+    @State private var exportFile: LibraryExporter.ExportFile?
+    @State private var isExporting = false
+    @State private var exportError: String?
 
     private var isConnected: Bool { !token.isEmpty }
 
@@ -38,6 +41,17 @@ struct SettingsView: View {
             Button("Cancel", role: .cancel) { tokenDraft = "" }
         } message: {
             Text("Create a personal access token at discogs.com/settings/developers.")
+        }
+        .sheet(item: $exportFile) { file in
+            ShareSheet(items: [file.url])
+        }
+        .alert("Export failed", isPresented: Binding(
+            get: { exportError != nil },
+            set: { if !$0 { exportError = nil } }
+        )) {
+            Button("OK", role: .cancel) { exportError = nil }
+        } message: {
+            Text(exportError ?? "")
         }
     }
 
@@ -358,6 +372,65 @@ struct SettingsView: View {
             Text("Your library is a plain SQLite file plus a Covers folder — other apps can open it directly.")
                 .font(.prSmall).foregroundStyle(Palette.tertiary)
                 .padding(.horizontal, 4)
+
+            GroupedCard(radius: 14) {
+                Menu {
+                    Button {
+                        export(.archive)
+                    } label: {
+                        Label("Library + covers (.zip)", systemImage: "doc.zipper")
+                    }
+                    Button {
+                        export(.database)
+                    } label: {
+                        Label("Database only (.sqlite)", systemImage: "cylinder.split.1x2")
+                    }
+                } label: {
+                    HStack(spacing: 12) {
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .fill(Palette.accent.opacity(0.16))
+                                .frame(width: 30, height: 30)
+                            Image(systemName: "square.and.arrow.up")
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundStyle(Palette.accent)
+                        }
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Export library").font(.prBody).foregroundStyle(Palette.label)
+                            Text(isExporting ? "Preparing…" : "Save or share a copy")
+                                .font(.prSmall).foregroundStyle(Palette.tertiary)
+                        }
+                        Spacer()
+                        if isExporting {
+                            ProgressView().controlSize(.small)
+                        } else {
+                            Image(systemName: "chevron.up.chevron.down")
+                                .font(.system(size: 12)).foregroundStyle(Palette.tertiary)
+                        }
+                    }
+                    .padding(.vertical, 10)
+                }
+                .disabled(isExporting)
+            }
+
+            Text("The zip holds the database and every cover — a complete backup. The database on its own opens in any SQLite tool.")
+                .font(.prSmall).foregroundStyle(Palette.tertiary)
+                .padding(.horizontal, 4)
+        }
+    }
+
+    private func export(_ format: LibraryExporter.Format) {
+        guard !isExporting else { return }
+        isExporting = true
+        Task {
+            do {
+                exportFile = try await library.exportLibrary(format)
+                Haptics.success()
+            } catch {
+                exportError = error.localizedDescription
+                Haptics.warning()
+            }
+            isExporting = false
         }
     }
 }

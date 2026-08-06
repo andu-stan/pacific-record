@@ -154,6 +154,11 @@ final class LibraryModel {
         refreshFacets()
     }
 
+    /// Builds a shareable copy of the library (see `LibraryExporter`).
+    func exportLibrary(_ format: LibraryExporter.Format) async throws -> LibraryExporter.ExportFile {
+        try await LibraryExporter.export(format, store: store, libraryFolder: libraryFolder)
+    }
+
     /// Distinct genres/formats present in the library, for the filter sheet.
     func refreshFacets() {
         availableGenres = (try? store.genres()) ?? []

@@ -329,6 +329,21 @@ public final class LibraryStore: @unchecked Sendable {
         }
     }
 
+    // MARK: - Export
+
+    /// Writes a clean, self-contained copy of the database to `url` (which must
+    /// not already exist).
+    ///
+    /// Uses SQLite's `VACUUM INTO` rather than copying the file: it takes a
+    /// consistent snapshot of the live database, compacts it, and produces a
+    /// single file with no side journals to carry along.
+    public func exportDatabase(to url: URL) throws {
+        // VACUUM cannot run inside a transaction.
+        try dbQueue.writeWithoutTransaction { db in
+            try db.execute(sql: "VACUUM INTO ?", arguments: [url.path])
+        }
+    }
+
     // MARK: - Bulk operations
 
     /// Assigns (or clears, with `nil`) the location of many records in one
