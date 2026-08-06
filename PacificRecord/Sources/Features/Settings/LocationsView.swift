@@ -17,7 +17,7 @@ struct LocationsView: View {
                 if model.locations.isEmpty {
                     emptyState
                 } else {
-                    GroupedCard(radius: 14) {
+                    GroupedCard() {
                         VStack(spacing: 0) {
                             ForEach(Array(model.locations.enumerated()), id: \.element.id) { index, location in
                                 row(location)
@@ -37,7 +37,7 @@ struct LocationsView: View {
                     }
                     .foregroundStyle(Palette.tint)
                     .padding(.vertical, 14).padding(.horizontal, 16)
-                    .background(Palette.grouped, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .background(Palette.grouped, in: RoundedRectangle(cornerRadius: Metrics.cardRadius, style: .continuous))
                 }
                 .buttonStyle(.plain)
                 .padding(.top, 4)

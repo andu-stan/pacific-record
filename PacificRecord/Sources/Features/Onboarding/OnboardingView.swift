@@ -18,12 +18,12 @@ struct OnboardingView: View {
                     .padding(.bottom, 28)
 
                 Text("Your collection,\ntruly yours.")
-                    .font(.system(size: 32, weight: .heavy))
+                    .font(.system(size: 32, weight: .semibold))
                     .foregroundStyle(Palette.label)
                     .padding(.bottom, 16)
 
                 (Text("Pacific Record keeps your library as an open file in ")
-                    + Text("iCloud Drive").foregroundColor(Palette.label).bold()
+                    + Text("iCloud Drive").foregroundColor(Palette.label).fontWeight(.semibold)
                     + Text(" — so it's backed up, synced across devices, and readable by other apps. No lock-in, ever."))
                     .font(.system(size: 17))
                     .foregroundStyle(Palette.secondary)
@@ -70,7 +70,7 @@ struct OnboardingView: View {
             ZStack {
                 Circle().fill(Palette.accent.opacity(0.2)).frame(width: 26, height: 26)
                 Image(systemName: "checkmark")
-                    .font(.system(size: 12, weight: .heavy))
+                    .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(Palette.badgeAmberText)
             }
             Text(text)

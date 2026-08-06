@@ -76,7 +76,11 @@ To enable it once you have a **paid Apple Developer** team:
 - **`VinylCore`** — data models, the GRDB-backed `LibraryStore` (schema, CRUD,
   full-text search), the Discogs/MusicBrainz metadata clients, and unit tests.
 - **`PacificRecord`** — the SwiftUI app implementing the design: a design-system
-  layer (SF Pro type scale + adaptive light/dark palette), the Library
+  layer implementing [`docs/design-system.md`](docs/design-system.md) — one
+  indigo primary with tints for hierarchy, surfaces stepped
+  canvas → surface → surface-2 → surface-3 (inverting between themes),
+  6pt containers and fully round controls, and an overline/body/caption type
+  scale capped at semibold. Screens: the Library
   (grid / list / empty), Record detail, the add flow, Settings, and first-run
   onboarding. Fonts are **SF Pro only** (the system font); icons use SF Symbols.
   - **Live barcode scanning** via VisionKit `DataScannerViewController` (with a

@@ -61,7 +61,7 @@ struct SettingsView: View {
     private var metadataSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             SectionCaption(text: "Metadata")
-            GroupedCard(radius: 14) {
+            GroupedCard() {
                 VStack(spacing: 0) {
                     Button { tokenDraft = token; showTokenEntry = true } label: {
                         VStack(spacing: 0) {
@@ -102,14 +102,14 @@ struct SettingsView: View {
                 .font(.prSmall).foregroundStyle(Palette.tertiary)
                 .padding(.horizontal, 4)
 
-            GroupedCard(radius: 14) {
+            GroupedCard() {
                 VStack(spacing: 0) {
                     sourceRow(index: 1, name: token.isEmpty ? "MusicBrainz" : "Discogs", divider: true)
                     sourceRow(index: 2, name: token.isEmpty ? "—" : "MusicBrainz", divider: false)
                 }
             }
 
-            GroupedCard(radius: 14) {
+            GroupedCard() {
                 HStack {
                     Text("Add new records to Discogs").font(.prBody).foregroundStyle(Palette.label)
                     Spacer()
@@ -140,7 +140,7 @@ struct SettingsView: View {
     private var valueSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             SectionCaption(text: "Value")
-            GroupedCard(radius: 14) {
+            GroupedCard() {
                 VStack(spacing: 0) {
                     Menu {
                         ForEach(DiscogsCurrency.supported, id: \.self) { code in
@@ -236,7 +236,7 @@ struct SettingsView: View {
     private var coverArtSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             SectionCaption(text: "Cover art")
-            GroupedCard(radius: 14) {
+            GroupedCard() {
                 VStack(spacing: 0) {
                     Menu {
                         ForEach(CoverSource.allCases) { source in
@@ -280,13 +280,13 @@ struct SettingsView: View {
     private var locationsSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             SectionCaption(text: "Collection")
-            GroupedCard(radius: 14) {
+            GroupedCard() {
                 NavigationLink {
                     LocationsView()
                 } label: {
                     HStack(spacing: 12) {
                         ZStack {
-                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            RoundedRectangle(cornerRadius: Metrics.cardRadius, style: .continuous)
                                 .fill(Palette.accent.opacity(0.16))
                                 .frame(width: 30, height: 30)
                             Image(systemName: "mappin.and.ellipse")
@@ -330,11 +330,11 @@ struct SettingsView: View {
     private var storageSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             SectionCaption(text: "Storage")
-            GroupedCard(radius: 14, padding: EdgeInsets(top: 16, leading: 16, bottom: 16, trailing: 16)) {
+            GroupedCard(padding: EdgeInsets(top: 16, leading: 16, bottom: 16, trailing: 16)) {
                 VStack(spacing: 0) {
                     HStack(spacing: 12) {
                         ZStack {
-                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            RoundedRectangle(cornerRadius: Metrics.cardRadius, style: .continuous)
                                 .fill(app.storageMode == .iCloud ? Palette.iCloudBlue : Color(hex: 0x48484A))
                                 .frame(width: 38, height: 38)
                             Image(systemName: app.storageMode == .iCloud ? "icloud.fill" : "internaldrive.fill")
@@ -381,7 +381,7 @@ struct SettingsView: View {
                 .font(.prSmall).foregroundStyle(Palette.tertiary)
                 .padding(.horizontal, 4)
 
-            GroupedCard(radius: 14) {
+            GroupedCard() {
                 Menu {
                     Button {
                         export(.archive)
@@ -396,7 +396,7 @@ struct SettingsView: View {
                 } label: {
                     HStack(spacing: 12) {
                         ZStack {
-                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            RoundedRectangle(cornerRadius: Metrics.cardRadius, style: .continuous)
                                 .fill(Palette.accent.opacity(0.16))
                                 .frame(width: 30, height: 30)
                             Image(systemName: "square.and.arrow.up")

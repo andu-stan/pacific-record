@@ -160,13 +160,13 @@ struct RecordDetailContent: View {
         ScrollView {
             VStack(spacing: 0) {
                 CoverArtView(seed: release.coverSeed, coverPath: release.coverPath,
-                             cornerRadius: 12, contentMode: .fit, maxPixel: CoverSize.detail)
+                             cornerRadius: Metrics.tileRadius, contentMode: .fit, maxPixel: CoverSize.detail)
                     // A definite box: the cover is loaded asynchronously, and a
                     // flexible max-only frame let the placeholder collapse to
                     // zero height until it arrived. `.fit` still shows the whole
                     // cover, letterboxed inside this square.
                     .frame(width: 236, height: 236)
-                    .shadow(color: .black.opacity(0.85), radius: 30, y: 24)
+                    .shadow(color: .black.opacity(0.35), radius: 12, y: 8)
                     .padding(.top, 6)
                     .contentShape(Rectangle())
                     .onTapGesture { showCover = true }
@@ -180,7 +180,7 @@ struct RecordDetailContent: View {
                     .multilineTextAlignment(.center)
                     .padding(.top, 20)
                 Text(release.artistDisplay)
-                    .font(.system(size: 19))
+                    .font(.prBody)
                     .foregroundStyle(Palette.secondary)
                     .padding(.top, 2)
                 StarRatingView(rating: release.rating, size: 18)
@@ -241,7 +241,7 @@ struct RecordDetailContent: View {
     }
 
     private func conditionCard(title: String, condition: Condition?) -> some View {
-        GroupedCard(radius: 14, padding: EdgeInsets(top: 13, leading: 15, bottom: 13, trailing: 15)) {
+        GroupedCard(padding: EdgeInsets(top: 13, leading: 15, bottom: 13, trailing: 15)) {
             VStack(alignment: .leading, spacing: 8) {
                 Text(title.uppercased())
                     .font(.system(size: 12, weight: .semibold))
@@ -264,12 +264,12 @@ struct RecordDetailContent: View {
             Text("Value")
                 .font(.prSection)
                 .foregroundStyle(Palette.label)
-            GroupedCard(radius: 14, padding: EdgeInsets(top: 14, leading: 16, bottom: 14, trailing: 16)) {
+            GroupedCard(padding: EdgeInsets(top: 14, leading: 16, bottom: 14, trailing: 16)) {
                 if let value {
                     HStack(alignment: .center) {
                         VStack(alignment: .leading, spacing: 3) {
                             Text("≈ \(value.formattedAmount)")
-                                .font(.system(size: 22, weight: .bold))
+                                .font(.system(size: 22, weight: .semibold))
                                 .foregroundStyle(Palette.label)
                             Text(valueSubtitle(value))
                                 .font(.prSmall)
@@ -330,7 +330,7 @@ struct RecordDetailContent: View {
             Text("Discogs")
                 .font(.prSection)
                 .foregroundStyle(Palette.label)
-            GroupedCard(radius: 14, padding: EdgeInsets(top: 14, leading: 16, bottom: 14, trailing: 16)) {
+            GroupedCard(padding: EdgeInsets(top: 14, leading: 16, bottom: 14, trailing: 16)) {
                 if isInCollection {
                     HStack(spacing: 8) {
                         Image(systemName: "checkmark.circle.fill")
@@ -386,12 +386,12 @@ struct RecordDetailContent: View {
                 .padding(.bottom, 2)
             ForEach(sides, id: \.name) { side in
                 Text("SIDE \(side.name)")
-                    .font(.system(size: 13, weight: .bold))
+                    .font(.system(size: 13, weight: .semibold))
                     .tracking(1)
                     .foregroundStyle(Palette.tint)
                     .padding(.vertical, 8)
                     .padding(.horizontal, 2)
-                GroupedCard(radius: 14, padding: EdgeInsets(top: 2, leading: 14, bottom: 2, trailing: 14)) {
+                GroupedCard(padding: EdgeInsets(top: 2, leading: 14, bottom: 2, trailing: 14)) {
                     VStack(spacing: 0) {
                         ForEach(Array(side.tracks.enumerated()), id: \.element.id) { index, track in
                             HStack(spacing: 12) {
@@ -425,7 +425,7 @@ struct RecordDetailContent: View {
                 .font(.prSection)
                 .foregroundStyle(Palette.label)
                 .padding(.bottom, 8)
-            GroupedCard(radius: 14, padding: EdgeInsets(top: 15, leading: 15, bottom: 15, trailing: 15)) {
+            GroupedCard(padding: EdgeInsets(top: 15, leading: 15, bottom: 15, trailing: 15)) {
                 Text(notes)
                     .font(.prBody)
                     .foregroundStyle(Palette.secondary)

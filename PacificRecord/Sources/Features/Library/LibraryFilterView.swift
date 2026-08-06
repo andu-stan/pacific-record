@@ -10,7 +10,7 @@ struct LibraryFilterView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                GroupedCard(radius: 14) {
+                GroupedCard() {
                     VStack(spacing: 0) {
                         locationRow
                         HRule()
@@ -176,7 +176,7 @@ struct LibraryFilterView: View {
             .frame(maxWidth: .infinity)
             .padding(.vertical, 9)
             .background(isOn ? Palette.accent : Palette.fill,
-                        in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        in: RoundedRectangle(cornerRadius: Metrics.cardRadius, style: .continuous))
         }
         .buttonStyle(.plain)
     }

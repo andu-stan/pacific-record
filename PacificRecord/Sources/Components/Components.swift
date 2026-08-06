@@ -29,29 +29,61 @@ func conditionSolidColor(_ condition: Condition) -> Color {
 
 struct ConditionBadge: View {
     let condition: Condition
-    var fontSize: CGFloat = 13
+    var fontSize: CGFloat = 12
 
     var body: some View {
         let palette = conditionPalette(condition)
         Text(condition.rawValue)
-            .font(.system(size: fontSize, weight: .bold))
+            .font(.system(size: fontSize, weight: .semibold))
+            .tracking(Metrics.overlineTracking)
             .foregroundStyle(palette.text)
             .padding(.horizontal, 10)
             .padding(.vertical, 4)
-            .background(palette.fill, in: RoundedRectangle(cornerRadius: Metrics.badgeRadius, style: .continuous))
+            .background(palette.fill, in: Capsule())
     }
 }
 
 /// A neutral "media grade" pill used in the list rows (grade text only).
+/// Metadata is caption-grade — it never competes with the title.
 struct GradePill: View {
     let text: String
     var body: some View {
         Text(text)
-            .font(.system(size: 12, weight: .bold))
-            .foregroundStyle(Palette.secondary)
+            .font(.prBadge)
+            .tracking(Metrics.overlineTracking)
+            .foregroundStyle(Palette.tertiary)
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
-            .background(Palette.badgeNeutralFill, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+            .background(Palette.badgeNeutralFill, in: Capsule())
+    }
+}
+
+/// The system's canonical control: a fully round pill in overline type, sitting
+/// one surface step above its container.
+struct PillButton: View {
+    let title: String
+    var systemImage: String?
+    var action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                if let systemImage {
+                    Image(systemName: systemImage).font(.system(size: 11, weight: .semibold))
+                }
+                Text(title.uppercased())
+                    .font(.prCaption)
+                    .tracking(Metrics.overlineTracking)
+            }
+            .foregroundStyle(Palette.secondary)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 6)
+            .background(Palette.fill, in: Capsule())
+            // Visual height is 28pt; expand the hit area to the 44pt minimum.
+            .contentShape(Capsule())
+            .frame(minHeight: Metrics.minTouchTarget)
+        }
+        .buttonStyle(.plain)
     }
 }
 
@@ -100,11 +132,11 @@ struct PrimaryButton: View {
         Button(action: action) {
             Text(title)
                 .font(.prHeadline)
-                .foregroundStyle(.white)
+                .foregroundStyle(Palette.onPrimary)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 15)
-                .background(Palette.accent, in: RoundedRectangle(cornerRadius: Metrics.buttonRadius, style: .continuous))
-                .shadow(color: Palette.accent.opacity(0.35), radius: 12, y: 8)
+                // 12/24 padding → a 48pt control.
+                .padding(.vertical, 14)
+                .background(Palette.primaryFill, in: Capsule())
         }
         .buttonStyle(.plain)
     }
@@ -120,8 +152,8 @@ struct SecondaryButton: View {
                 .font(.prHeadline)
                 .foregroundStyle(Palette.tint)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 15)
-                .background(Palette.fill, in: RoundedRectangle(cornerRadius: Metrics.buttonRadius, style: .continuous))
+                .padding(.vertical, 14)
+                .background(Palette.fill, in: Capsule())
         }
         .buttonStyle(.plain)
     }
@@ -129,16 +161,22 @@ struct SecondaryButton: View {
 
 // MARK: - Grouped card & rows
 
+/// A section container / card. Hierarchy comes from surface *value*, so there
+/// is no shadow on dark; light gets the faintest lift only.
 struct GroupedCard<Content: View>: View {
     var radius: CGFloat = Metrics.cardRadius
     var padding: EdgeInsets = EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16)
+    /// Set for a card nested *inside* another surface (never skip a step).
+    var nested: Bool = false
     @ViewBuilder var content: Content
 
     var body: some View {
         content
             .padding(padding)
-            .background(Palette.grouped, in: RoundedRectangle(cornerRadius: radius, style: .continuous))
-            .shadow(color: .black.opacity(0.05), radius: 1.5, y: 1)
+            .background(
+                nested ? Palette.surface2 : Palette.grouped,
+                in: RoundedRectangle(cornerRadius: radius, style: .continuous)
+            )
     }
 }
 
@@ -169,16 +207,29 @@ struct InfoRow: View {
     }
 }
 
-/// Uppercase, tracked section header (e.g. "METADATA", "GENRE & STYLES").
+/// Overline — the uppercase, tracked structural label ("METADATA", "STORAGE").
 struct SectionCaption: View {
     let text: String
     var body: some View {
         Text(text.uppercased())
             .font(.prCaption)
-            .tracking(0.6)
+            .tracking(Metrics.overlineTracking)
             .foregroundStyle(Palette.tertiary)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 4)
+    }
+}
+
+/// A section title with the system's full-width rule beneath it.
+struct SectionTitle: View {
+    let text: String
+
+    init(_ text: String) { self.text = text }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(text).font(.prSection).foregroundStyle(Palette.label)
+            Rectangle().fill(Palette.rule).frame(height: 1)
+        }
     }
 }
 

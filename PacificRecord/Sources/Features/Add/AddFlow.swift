@@ -25,7 +25,7 @@ struct AddEntrySheet: View {
 
             VStack(alignment: .leading, spacing: 0) {
                 Text("Add a record")
-                    .font(.system(size: 24, weight: .heavy))
+                    .font(.system(size: 24, weight: .semibold))
                     .foregroundStyle(Palette.label)
                 Text("Choose how you'd like to add it.")
                     .font(.prBody)
@@ -67,7 +67,7 @@ struct AddEntrySheet: View {
         Button(action: action) {
             HStack(spacing: 15) {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 12, style: .continuous).fill(iconColor)
+                    RoundedRectangle(cornerRadius: Metrics.cardRadius, style: .continuous).fill(iconColor)
                         .frame(width: 48, height: 48)
                     Image(systemName: icon)
                         .font(.system(size: 21, weight: .semibold))
@@ -83,7 +83,7 @@ struct AddEntrySheet: View {
                     .foregroundStyle(Palette.quaternary)
             }
             .padding(16)
-            .background(Palette.fill, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .background(Palette.fill, in: RoundedRectangle(cornerRadius: Metrics.cardRadius, style: .continuous))
         }
         .buttonStyle(.plain)
     }
@@ -173,7 +173,7 @@ struct SearchingOverlay: View {
                 }
             }
             .padding(28)
-            .background(Color(hex: 0x1C1C1E), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .background(Palette.overlay, in: RoundedRectangle(cornerRadius: Metrics.overlayRadius, style: .continuous))
         }
     }
 }
@@ -212,7 +212,7 @@ struct ScannerView: View {
             .padding(.top, 12)
 
             Spacer()
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
+            RoundedRectangle(cornerRadius: Metrics.cardRadius, style: .continuous)
                 .stroke(Palette.accent, lineWidth: 3)
                 .frame(width: 280, height: 170)
             Text("Line up the barcode on the back cover")
@@ -253,7 +253,7 @@ struct ScannerView: View {
                     .keyboardType(.numberPad).font(.prBody).foregroundStyle(Palette.label)
             }
             .padding(.horizontal, 12).padding(.vertical, 12)
-            .background(Palette.controlFill, in: RoundedRectangle(cornerRadius: 11, style: .continuous))
+            .background(Palette.controlFill, in: RoundedRectangle(cornerRadius: Metrics.cardRadius, style: .continuous))
             .padding(.bottom, 14)
             PrimaryButton(title: "Look up") { model.handleBarcode(typedBarcode) }
                 .padding(.bottom, 12)
@@ -269,7 +269,7 @@ struct ScannerView: View {
         let overCamera = DataScannerViewController.isSupported
         return Button { dismiss() } label: {
             Image(systemName: "xmark")
-                .font(.system(size: 15, weight: .bold))
+                .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(overCamera ? Color.white : Palette.label)
                 .frame(width: 34, height: 34)
                 .background(overCamera ? Color.black.opacity(0.5) : Palette.grouped, in: Circle())
@@ -339,8 +339,8 @@ struct MatchView: View {
             Spacer()
         }
         .padding(.horizontal, 14).padding(.vertical, 11)
-        .background(Palette.badgeAmberFill, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Palette.accent.opacity(0.3)))
+        .background(Palette.badgeAmberFill, in: RoundedRectangle(cornerRadius: Metrics.cardRadius, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: Metrics.cardRadius).strokeBorder(Palette.accent.opacity(0.3)))
         .padding(.bottom, 14)
     }
 }
@@ -438,7 +438,7 @@ struct TextSearchView: View {
                     }
                 }
                 .padding(.horizontal, 12).padding(.vertical, 10)
-                .background(Palette.controlFill, in: RoundedRectangle(cornerRadius: 11, style: .continuous))
+                .background(Palette.controlFill, in: RoundedRectangle(cornerRadius: Metrics.cardRadius, style: .continuous))
                 .padding(.bottom, 14)
 
                 if model.matches.isEmpty {

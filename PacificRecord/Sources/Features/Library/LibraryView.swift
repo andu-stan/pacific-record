@@ -98,11 +98,12 @@ struct LibraryView: View {
             VStack(alignment: .leading, spacing: 0) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("\(model.count) records · \(model.artistCount) artists")
-                        .font(.system(size: 15))
+                        .font(.prNumeric)
                         .foregroundStyle(Palette.secondary)
                     if !model.totalValueByCurrency.isEmpty {
                         Text("≈ \(model.formattedTotalValue) estimated value")
-                            .font(.system(size: 13))
+                            .font(.prCaptionSm)
+                            .monospacedDigit()
                             .foregroundStyle(Palette.tertiary)
                     }
                 }
@@ -135,9 +136,9 @@ struct LibraryView: View {
                         .accessibilityLabel("Clear search")
                     }
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
-                .background(Palette.controlFill, in: RoundedRectangle(cornerRadius: 11, style: .continuous))
+                .padding(.horizontal, 14)
+                .padding(.vertical, 9)
+                .background(Palette.controlFill, in: Capsule())
                 .onChange(of: model.searchText) { model.reload() }
 
                 HStack(spacing: 8) {
@@ -296,41 +297,42 @@ struct LibraryView: View {
             }
         } label: {
             HStack(spacing: 6) {
-                Text("Sort").foregroundStyle(Palette.secondary)
-                Text(model.sort.label).foregroundStyle(Palette.label)
+                Text(model.sort.label.uppercased())
+                    .font(.prCaption)
+                    .tracking(Metrics.overlineTracking)
+                    .foregroundStyle(Palette.secondary)
                 Image(systemName: "chevron.down")
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(Palette.tint)
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundStyle(Palette.tertiary)
             }
-            .font(.system(size: 14, weight: .semibold))
-            .padding(.horizontal, 11)
+            .padding(.horizontal, 14)
             .padding(.vertical, 6)
-            .background(Palette.grouped, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
-            .shadow(color: .black.opacity(0.05), radius: 1.5, y: 1)
+            .background(Palette.fill, in: Capsule())
         }
+        .accessibilityLabel("Sort by \(model.sort.label)")
     }
 
     private var filterButton: some View {
         Button { showFilter = true } label: {
             HStack(spacing: 6) {
                 Image(systemName: "line.3.horizontal.decrease")
-                    .font(.system(size: 12, weight: .bold))
-                Text("Filter")
+                    .font(.system(size: 11, weight: .semibold))
+                Text("Filter".uppercased())
+                    .font(.prCaption)
+                    .tracking(Metrics.overlineTracking)
                 if model.filter.activeCount > 0 {
                     Text("\(model.filter.activeCount)")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundStyle(.white)
-                        .frame(minWidth: 17, minHeight: 17)
+                        .font(.system(size: 10, weight: .semibold))
+                        .monospacedDigit()
+                        .foregroundStyle(Palette.onPrimary)
+                        .frame(minWidth: 16, minHeight: 16)
                         .background(Palette.accent, in: Circle())
                 }
             }
-            .font(.system(size: 14, weight: .semibold))
-            .foregroundStyle(model.filter.isActive ? Palette.label : Palette.secondary)
-            .padding(.horizontal, 11)
+            .foregroundStyle(model.filter.isActive ? Palette.accent : Palette.secondary)
+            .padding(.horizontal, 14)
             .padding(.vertical, 6)
-            .background(model.filter.isActive ? Palette.accent.opacity(0.16) : Palette.grouped,
-                        in: RoundedRectangle(cornerRadius: 9, style: .continuous))
-            .shadow(color: .black.opacity(0.05), radius: 1.5, y: 1)
+            .background(Palette.fill, in: Capsule())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(model.filter.activeCount > 0 ? "Filter, \(model.filter.activeCount) active" : "Filter")
@@ -342,7 +344,7 @@ struct LibraryView: View {
             layoutButton(icon: "list.bullet", layout: .list)
         }
         .padding(3)
-        .background(Palette.controlFill, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+        .background(Palette.controlFill, in: Capsule())
     }
 
     private func layoutButton(icon: String, layout: LibraryLayout) -> some View {
@@ -351,13 +353,10 @@ struct LibraryView: View {
             model.layout = layout
         } label: {
             Image(systemName: icon)
-                .font(.system(size: 14, weight: .semibold))
+                .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(active ? Palette.label : Palette.tertiary)
-                .frame(width: 34, height: 28)
-                .background(
-                    active ? Palette.segmentSelected : Color.clear,
-                    in: RoundedRectangle(cornerRadius: 7, style: .continuous)
-                )
+                .frame(width: 34, height: 26)
+                .background(active ? Palette.segmentSelected : Color.clear, in: Capsule())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(layout == .grid ? "Grid view" : "List view")
@@ -409,15 +408,18 @@ struct BulkActionBar: View {
         // Extends the blur behind the home indicator; as an overlay (rather
         // than a safe-area inset) the bar sits inside the safe area.
         .background {
-            Rectangle().fill(.ultraThinMaterial).ignoresSafeArea(edges: .bottom)
+            Rectangle().fill(Palette.chrome).ignoresSafeArea(edges: .bottom)
         }
+        // A hairline, not a shadow.
         .overlay(alignment: .top) { Rectangle().fill(Palette.separator).frame(height: 1) }
     }
 
     private func barLabel(icon: String, title: String, tint: Color) -> some View {
         VStack(spacing: 3) {
-            Image(systemName: icon).font(.system(size: 17))
-            Text(title).font(.system(size: 11, weight: .semibold))
+            Image(systemName: icon).font(.system(size: 17, weight: .regular))
+            Text(title.uppercased())
+                .font(.prCaption)
+                .tracking(Metrics.overlineTracking)
         }
         .foregroundStyle(disabled ? Palette.quaternary : tint)
         .frame(minWidth: 62)
@@ -458,7 +460,8 @@ struct LibraryGrid: View {
         VStack(alignment: .leading, spacing: 6) {
             CoverArtView(seed: release.coverSeed, coverPath: release.listCoverPath, maxPixel: CoverSize.tile)
                 .aspectRatio(1, contentMode: .fit)
-                .shadow(color: .black.opacity(0.5), radius: 7, y: 4)
+                // Artwork is separated by value, not by a drop shadow.
+                .shadow(color: .black.opacity(0.22), radius: 3, y: 2)
                 .overlay {
                     if selected {
                         RoundedRectangle(cornerRadius: Metrics.tileRadius, style: .continuous)
@@ -470,11 +473,11 @@ struct LibraryGrid: View {
                 }
                 .opacity(selecting && !selected ? 0.72 : 1)
             Text(release.title)
-                .font(.system(size: 12, weight: .semibold))
+                .font(.system(size: 13, weight: .medium))
                 .foregroundStyle(Palette.label)
                 .lineLimit(1)
             Text(release.artistDisplay)
-                .font(.system(size: 11))
+                .font(.prCaptionSm)
                 .foregroundStyle(Palette.tertiary)
                 .lineLimit(1)
         }
@@ -490,7 +493,7 @@ struct SelectionBadge: View {
             Circle().strokeBorder(Color.white.opacity(0.9), lineWidth: 1.5)
             if selected {
                 Image(systemName: "checkmark")
-                    .font(.system(size: 11, weight: .bold))
+                    .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(.white)
             }
         }
@@ -542,9 +545,9 @@ struct LibraryRow: View {
                         .foregroundStyle(selected ? Palette.accent : Palette.quaternary)
                 }
                 CoverArtView(seed: release.coverSeed, coverPath: release.listCoverPath,
-                             cornerRadius: 6, maxPixel: CoverSize.row)
-                    .frame(width: 52, height: 52)
-                    .shadow(color: .black.opacity(0.5), radius: 4, y: 2)
+                             cornerRadius: Metrics.tileRadius, maxPixel: CoverSize.row)
+                    .frame(width: 56, height: 56)
+                    .shadow(color: .black.opacity(0.18), radius: 2, y: 1)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(release.title)
                         .font(.prBodyEmphasis)
@@ -559,8 +562,8 @@ struct LibraryRow: View {
                 VStack(alignment: .trailing, spacing: 4) {
                     if showValue, let value = release.formattedValue {
                         Text(value)
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(Palette.label)
+                            .font(.prNumeric)
+                            .foregroundStyle(Palette.secondary)
                             .lineLimit(1)
                     }
                     if let media = release.mediaCondition {

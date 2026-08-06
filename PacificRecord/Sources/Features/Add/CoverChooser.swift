@@ -15,7 +15,7 @@ struct CoverChooserGrid: View {
             ForEach(candidates) { candidate in
                 Button { onPick(candidate) } label: {
                     VStack(alignment: .leading, spacing: 6) {
-                        RemoteCoverView(url: candidate.thumbURL ?? candidate.url, seed: seed, cornerRadius: 8)
+                        RemoteCoverView(url: candidate.thumbURL ?? candidate.url, seed: seed, cornerRadius: Metrics.tileRadius)
                             .aspectRatio(1, contentMode: .fit)
                             .shadow(color: .black.opacity(0.5), radius: 7, y: 4)
                         Text(candidate.source.displayName)

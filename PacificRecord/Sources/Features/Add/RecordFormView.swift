@@ -161,11 +161,11 @@ struct RecordFormView: View {
             HStack(spacing: 16) {
                 ZStack {
                     CoverArtView(seed: title.isEmpty ? artist : title, coverPath: coverPath,
-                                 cornerRadius: 10, maxPixel: CoverSize.form)
+                                 cornerRadius: Metrics.tileRadius, maxPixel: CoverSize.form)
                         .frame(width: 88, height: 88)
                         .shadow(color: .black.opacity(0.5), radius: 8, y: 6)
                     if isFetchingCover {
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        RoundedRectangle(cornerRadius: Metrics.cardRadius, style: .continuous)
                             .fill(.black.opacity(0.45))
                             .frame(width: 88, height: 88)
                         ProgressView().tint(.white)
@@ -211,7 +211,7 @@ struct RecordFormView: View {
     }
 
     private var infoCard: some View {
-        GroupedCard(radius: 14) {
+        GroupedCard() {
             VStack(spacing: 0) {
                 fieldRow("Artist", $artist)
                 fieldRow("Title", $title)
@@ -243,7 +243,7 @@ struct RecordFormView: View {
                         HStack(spacing: 4) {
                             Text(tags[index]).font(.system(size: 14, weight: .semibold))
                             Button { tags.remove(at: index) } label: {
-                                Image(systemName: "xmark").font(.system(size: 9, weight: .bold))
+                                Image(systemName: "xmark").font(.system(size: 9, weight: .semibold))
                             }
                             .buttonStyle(.plain)
                         }
@@ -275,7 +275,7 @@ struct RecordFormView: View {
     private var locationSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             SectionCaption(text: "Location")
-            GroupedCard(radius: 14, padding: EdgeInsets(top: 12, leading: 14, bottom: 12, trailing: 14)) {
+            GroupedCard(padding: EdgeInsets(top: 12, leading: 14, bottom: 12, trailing: 14)) {
                 Menu {
                     Button { locationID = nil } label: {
                         if locationID == nil {
@@ -331,7 +331,7 @@ struct RecordFormView: View {
     }
 
     private var ratingCard: some View {
-        GroupedCard(radius: 14, padding: EdgeInsets(top: 14, leading: 14, bottom: 14, trailing: 14)) {
+        GroupedCard(padding: EdgeInsets(top: 14, leading: 14, bottom: 14, trailing: 14)) {
             HStack {
                 Text("Rating").font(.prBody).foregroundStyle(Palette.label)
                 Spacer()
@@ -341,7 +341,7 @@ struct RecordFormView: View {
     }
 
     private var notesCard: some View {
-        GroupedCard(radius: 14, padding: EdgeInsets(top: 14, leading: 14, bottom: 14, trailing: 14)) {
+        GroupedCard(padding: EdgeInsets(top: 14, leading: 14, bottom: 14, trailing: 14)) {
             TextField("Notes — pressing details, where you found it…", text: $notes, axis: .vertical)
                 .font(.prBody)
                 .foregroundStyle(Palette.label)
@@ -367,7 +367,7 @@ struct RecordFormView: View {
     }
 
     private func menuCard(title: String, value: String, options: [String], onPick: @escaping (String) -> Void) -> some View {
-        GroupedCard(radius: 14, padding: EdgeInsets(top: 12, leading: 14, bottom: 12, trailing: 14)) {
+        GroupedCard(padding: EdgeInsets(top: 12, leading: 14, bottom: 12, trailing: 14)) {
             VStack(alignment: .leading, spacing: 6) {
                 Text(title.uppercased()).font(.prSmall).foregroundStyle(Palette.tertiary)
                 Menu {
@@ -388,7 +388,7 @@ struct RecordFormView: View {
     }
 
     private func conditionCard(title: String, selection: Binding<Condition?>) -> some View {
-        GroupedCard(radius: 14, padding: EdgeInsets(top: 12, leading: 14, bottom: 12, trailing: 14)) {
+        GroupedCard(padding: EdgeInsets(top: 12, leading: 14, bottom: 12, trailing: 14)) {
             VStack(alignment: .leading, spacing: 8) {
                 Text(title).font(.prSmall).foregroundStyle(Palette.tertiary)
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -408,7 +408,7 @@ struct RecordFormView: View {
     private func gradeChip(_ condition: Condition, selected: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(condition.rawValue)
-                .font(.system(size: 12, weight: .bold))
+                .font(.system(size: 12, weight: .semibold))
                 // Selected chips fill solid with white text so every grade reads
                 // clearly — the tinted style was invisible for VG and below.
                 .foregroundStyle(selected ? Color.white : Palette.tertiary)
