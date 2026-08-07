@@ -159,6 +159,26 @@ public final class LibraryStore: @unchecked Sendable {
             try db.execute(sql: "UPDATE library_meta SET value = ? WHERE key = ?", arguments: ["4", "schema_version"])
         }
 
+        migrator.registerMigration("v5") { db in
+            try db.create(table: "wishlist") { t in
+                t.column("id", .text).primaryKey()
+                t.column("title", .text).notNull()
+                t.column("artist_display", .text).notNull()
+                t.column("year", .integer)
+                t.column("discogs_release_id", .integer)
+                t.column("notes", .text)
+                t.column("thumb_path", .text)
+                t.column("last_price", .double)
+                t.column("last_currency", .text)
+                t.column("previous_price", .double)
+                t.column("price_checked_at", .datetime)
+                t.column("num_for_sale", .integer)
+                t.column("added_at", .datetime).notNull()
+            }
+            try db.create(index: "idx_wishlist_discogs", on: "wishlist", columns: ["discogs_release_id"])
+            try db.execute(sql: "UPDATE library_meta SET value = ? WHERE key = ?", arguments: ["5", "schema_version"])
+        }
+
         return migrator
     }
 
@@ -342,6 +362,32 @@ public final class LibraryStore: @unchecked Sendable {
         // VACUUM cannot run inside a transaction.
         try dbQueue.writeWithoutTransaction { db in
             try db.execute(sql: "VACUUM INTO ?", arguments: [url.path])
+        }
+    }
+
+    // MARK: - Wishlist
+
+    /// Wishlist entries, most recently added first.
+    public func wishlist() throws -> [WishlistItem] {
+        try dbQueue.read { db in
+            try WishlistItem.fetchAll(db, sql: "SELECT * FROM wishlist ORDER BY added_at DESC")
+        }
+    }
+
+    /// Inserts or updates an entry.
+    public func saveWishlistItem(_ item: WishlistItem) throws {
+        try dbQueue.write { db in try item.save(db) }
+    }
+
+    public func deleteWishlistItem(id: String) throws {
+        try dbQueue.write { db in _ = try WishlistItem.deleteOne(db, key: id) }
+    }
+
+    /// Discogs release ids already on the wishlist, so the same pressing isn't
+    /// added twice.
+    public func wishlistDiscogsIDs() throws -> Set<Int> {
+        try dbQueue.read { db in
+            Set(try Int.fetchAll(db, sql: "SELECT discogs_release_id FROM wishlist WHERE discogs_release_id IS NOT NULL"))
         }
     }
 

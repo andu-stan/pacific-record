@@ -12,6 +12,8 @@ struct SettingsView: View {
     @AppStorage(DiscogsCollectionSync.autoSyncKey) private var syncToDiscogs = false
     @AppStorage(RecordValueService.currencyKey) private var currency = "USD"
     @AppStorage(RecordValueService.showValueInListKey) private var showValueInList = false
+    @AppStorage(WishlistModel.showStatsKey) private var showStatsTab = true
+    @AppStorage(WishlistModel.showWishlistKey) private var showWishlistTab = false
     @State private var showTokenEntry = false
     @State private var tokenDraft = ""
     @State private var exportFile: LibraryExporter.ExportFile?
@@ -29,6 +31,7 @@ struct SettingsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
                 metadataSection
+                tabsSection
                 valueSection
                 coverArtSection
                 locationsSection
@@ -185,6 +188,34 @@ struct SettingsView: View {
             }
             .padding(.vertical, 12)
             if divider { HRule() }
+        }
+    }
+
+    // MARK: Tabs
+
+    private var tabsSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            SectionCaption(text: "Screens")
+            GroupedCard() {
+                VStack(spacing: 0) {
+                    HStack {
+                        Text("Stats").font(.prBody).foregroundStyle(Palette.label)
+                        Spacer()
+                        Toggle("", isOn: $showStatsTab).labelsHidden().tint(Palette.accent)
+                    }
+                    .padding(.vertical, 6)
+                    HRule()
+                    HStack {
+                        Text("Wishlist").font(.prBody).foregroundStyle(Palette.label)
+                        Spacer()
+                        Toggle("", isOn: $showWishlistTab).labelsHidden().tint(Palette.accent)
+                    }
+                    .padding(.vertical, 6)
+                }
+            }
+            Text("Stats charts what's already in your library. Wishlist tracks records you don't own yet, checking their Discogs price and availability. The tab bar appears once either is on.")
+                .font(.prSmall).foregroundStyle(Palette.tertiary)
+                .padding(.horizontal, 4)
         }
     }
 

@@ -1,0 +1,17 @@
+Fonts bundled with Pacific Record
+=================================
+
+Inter Tight
+  Copyright 2022 The Inter Project Authors
+  https://github.com/rsms/inter-tight
+
+Playfair Display
+  Copyright 2017 The Playfair Display Project Authors
+  https://github.com/clauseggers/Playfair-Display
+
+Both are licensed under the SIL Open Font License, Version 1.1.
+The full licence text is available at https://scripts.sil.org/OFL
+
+These are static instances (weight-instanced from the upstream variable
+fonts) of the latin subset, matching the families named in the project's
+design system (docs/design-system.md).

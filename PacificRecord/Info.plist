@@ -22,6 +22,13 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>UIAppFonts</key>
+	<array>
+		<string>InterTight-400.ttf</string>
+		<string>InterTight-500.ttf</string>
+		<string>InterTight-600.ttf</string>
+		<string>PlayfairDisplay-400.ttf</string>
+	</array>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchScreen</key>

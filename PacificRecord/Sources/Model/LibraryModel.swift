@@ -42,11 +42,14 @@ final class LibraryModel {
     /// Drives the "update every value" run from Settings; lives here so it
     /// keeps going after that sheet is dismissed.
     private(set) var valueRefresh: ValueRefreshCoordinator
+    /// Wishlist state, sharing this library's store and cover folder.
+    private(set) var wishlist: WishlistModel
 
     init(store: LibraryStore, libraryFolder: URL) {
         self.store = store
         self.libraryFolder = libraryFolder
         self.valueRefresh = ValueRefreshCoordinator(store: store)
+        self.wishlist = WishlistModel(store: store, libraryFolder: libraryFolder)
         reload()
         reloadLocations()
         refreshFacets()

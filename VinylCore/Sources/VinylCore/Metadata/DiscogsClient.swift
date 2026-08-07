@@ -72,6 +72,24 @@ public struct DiscogsClient: MetadataProvider {
         return Self.map(detail: detail, fallback: match)
     }
 
+    /// Lowest listing *and* how many copies are for sale, from a single release
+    /// read — what wishlist tracking needs to show price and availability.
+    public func marketplaceSnapshot(releaseID: Int, currency: String? = nil) async throws -> (price: Money?, numForSale: Int) {
+        await limiter.waitForTurn()
+        var components = URLComponents(
+            url: baseURL.appendingPathComponent("releases/\(releaseID)"),
+            resolvingAgainstBaseURL: false
+        )
+        if let currency, DiscogsCurrency.isSupported(currency) {
+            components?.queryItems = [URLQueryItem(name: "curr_abbr", value: currency)]
+        }
+        guard let url = components?.url else { throw MetadataError.invalidURL }
+        let data = try await http.data(from: url, headers: headers)
+        let detail = try Self.decoder.decode(DiscogsReleaseDetail.self, from: data)
+        let money = detail.lowestPrice.map { Money(amount: $0, currency: currency ?? "USD") }
+        return (money, detail.numForSale ?? 0)
+    }
+
     // MARK: - Images
 
     /// Every image for a release (front, back, labels…), primary first — for the

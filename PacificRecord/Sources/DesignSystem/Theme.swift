@@ -126,51 +126,69 @@ enum Palette {
 
 // MARK: - Typography
 //
-// The source system pairs a display serif with a humanist sans. This app is
-// system-font only, so the whole scale is SF Pro and the serif "one display
-// moment" is expressed through size and tracking instead of a second family.
-// Two weights carry everything: regular/medium for content, semibold for
-// anything structural — nothing heavier.
+// The design system's two families, bundled from their upstream open-source
+// releases (SIL OFL — see Resources/Fonts/LICENSE.txt): Inter Tight for the UI
+// and Playfair Display for the one display moment per screen. Only three
+// weights exist — 400/500 for content, 600 for anything structural.
+//
+// `Font.custom` falls back to the system font if a face fails to register, so
+// the app still renders if those resources ever go missing.
+
+enum TypeFace {
+    /// Inter Tight at a design weight. PostScript names come from the instanced
+    /// statics: InterTight-Regular / -Medium / -SemiBold.
+    static func ui(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font {
+        let suffix: String
+        switch weight {
+        case .semibold, .bold, .heavy, .black: suffix = "SemiBold"
+        case .medium: suffix = "Medium"
+        default: suffix = "Regular"
+        }
+        return .custom("InterTight-\(suffix)", size: size)
+    }
+
+    static func display(_ size: CGFloat) -> Font {
+        .custom("PlayfairDisplay-Regular", size: size)
+    }
+}
 
 extension Font {
-    /// Display — the single expressive moment on a screen. The source design
-    /// calls for Playfair Display; this uses New York, Apple's system serif, so
-    /// the serif moment survives without bundling a third-party face.
-    static let prDisplay = Font.system(size: 40, weight: .regular, design: .serif)
+    /// Display — the single expressive moment on a screen (Playfair Display).
+    static let prDisplay = TypeFace.display(40)
     /// Numeric value on a stat card (tabular).
-    static let prStatValue = Font.system(size: 24, weight: .semibold).monospacedDigit()
-    /// Mono metadata — the year on a tile, the format on a row.
+    static let prStatValue = TypeFace.ui(24, .semibold).monospacedDigit()
+    /// Mono metadata — the year on a tile, the format on a row. The design's
+    /// mono is a system stack, so this stays on the system monospace.
     static let prMonoTiny = Font.system(size: 9, weight: .regular, design: .monospaced)
     static let prMonoSmall = Font.system(size: 10, weight: .regular, design: .monospaced)
-    /// Big numeric value (tabular).
-    static let prStat = Font.system(size: 32, weight: .semibold).monospacedDigit()
+    static let prStat = TypeFace.ui(32, .semibold).monospacedDigit()
 
-    static let prLargeTitle = Font.system(size: 30, weight: .semibold)
+    static let prLargeTitle = TypeFace.ui(30, .semibold)
     /// h1 — page titles.
-    static let prTitle = Font.system(size: 24, weight: .semibold)
-    static let prTitle2 = Font.system(size: 20, weight: .semibold)
+    static let prTitle = TypeFace.ui(24, .semibold)
+    static let prTitle2 = TypeFace.ui(20, .semibold)
     /// h2 — section headings ("Tracklist", "Notes").
-    static let prSection = Font.system(size: 18, weight: .semibold)
+    static let prSection = TypeFace.ui(18, .semibold)
     /// h3 — card headings.
-    static let prHeadline = Font.system(size: 16, weight: .semibold)
+    static let prHeadline = TypeFace.ui(16, .semibold)
 
     /// body — track titles, list rows.
-    static let prBody = Font.system(size: 15, weight: .medium)
-    static let prBodyEmphasis = Font.system(size: 15, weight: .semibold)
+    static let prBody = TypeFace.ui(15, .medium)
+    static let prBodyEmphasis = TypeFace.ui(15, .semibold)
     /// body-sm — secondary lines.
-    static let prSmall = Font.system(size: 13)
-    static let prFootnote = Font.system(size: 13)
+    static let prSmall = TypeFace.ui(13)
+    static let prFootnote = TypeFace.ui(13)
     /// caption — timestamps, counts.
-    static let prCaptionSm = Font.system(size: 12)
+    static let prCaptionSm = TypeFace.ui(12)
     /// Numeric caption, tabular so counts don't jitter.
-    static let prNumeric = Font.system(size: 13, weight: .medium).monospacedDigit()
+    static let prNumeric = TypeFace.ui(13, .medium).monospacedDigit()
 
     /// overline — uppercase structural labels. Pair with `Metrics.overlineTracking`.
-    static let prCaption = Font.system(size: 11, weight: .semibold)
-    static let prBadge = Font.system(size: 11, weight: .semibold)
+    static let prCaption = TypeFace.ui(11, .semibold)
+    static let prBadge = TypeFace.ui(11, .semibold)
 
-    static let prNav = Font.system(size: 16, weight: .medium)
-    static let prNavBold = Font.system(size: 16, weight: .semibold)
+    static let prNav = TypeFace.ui(16, .medium)
+    static let prNavBold = TypeFace.ui(16, .semibold)
 }
 
 // MARK: - Metrics
