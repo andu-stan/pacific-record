@@ -96,7 +96,7 @@ To enable it once you have a **paid Apple Developer** team:
     off. Switchable from Settings; switching copies your library to the new
     location (never deletes). *Currently disabled by default* so the app builds
     on a free account — see [iCloud](#icloud-currently-disabled) to enable.
-  - **Polish (M4)** — app icon (a vinyl record in the brand amber), VoiceOver
+  - **Polish (M4)** — app icon (a vinyl record in the brand indigo), VoiceOver
     labels on icon-only controls (covers marked decorative), haptics on scan /
     save, and friendlier Discogs rate-limit / auth messages. Full Dynamic Type
     scaling is the remaining accessibility item (deferred to keep the tuned
