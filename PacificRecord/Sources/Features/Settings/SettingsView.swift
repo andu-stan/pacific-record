@@ -233,14 +233,26 @@ struct SettingsView: View {
                     .padding(.vertical, 6)
                     HRule()
                     HStack {
-                        Text("Wishlist").font(.prBody).foregroundStyle(Palette.label)
+                        HStack(spacing: 8) {
+                            Text("Wishlist").font(.prBody).foregroundStyle(Palette.label)
+                            Text("Experimental".uppercased())
+                                .font(.prBadge)
+                                .tracking(Metrics.overlineTracking)
+                                .foregroundStyle(Palette.badgeAmberText)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 3)
+                                .background(Palette.badgeAmberFill, in: Capsule())
+                        }
                         Spacer()
                         Toggle("", isOn: $showWishlistTab).labelsHidden().tint(Palette.accent)
                     }
                     .padding(.vertical, 6)
                 }
             }
-            Text("Stats charts what's already in your library. Wishlist tracks records you don't own yet, checking their Discogs price and availability. The tab bar appears once either is on.")
+            Text("Stats charts what's already in your library. The tab bar appears once either is on.")
+                .font(.prSmall).foregroundStyle(Palette.tertiary)
+                .padding(.horizontal, 4)
+            Text("Wishlist is experimental. It tracks records you don't own yet, re-checking each one's lowest Discogs listing and how many copies are for sale. Prices are only as fresh as the last check, availability comes from Discogs alone, and the feature may change or be removed.")
                 .font(.prSmall).foregroundStyle(Palette.tertiary)
                 .padding(.horizontal, 4)
         }

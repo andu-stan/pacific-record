@@ -14,10 +14,19 @@ struct WishlistView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 header
-                Text("Wishlist")
-                    .font(.prDisplay)
-                    .tracking(-0.8)
-                    .foregroundStyle(Palette.label)
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                    Text("Wishlist")
+                        .font(.prDisplay)
+                        .tracking(-0.8)
+                        .foregroundStyle(Palette.label)
+                    Text("Experimental".uppercased())
+                        .font(.prBadge)
+                        .tracking(Metrics.overlineTracking)
+                        .foregroundStyle(Palette.badgeAmberText)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(Palette.badgeAmberFill, in: Capsule())
+                }
 
                 Text(summary)
                     .font(.prCaptionSm)
