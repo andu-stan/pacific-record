@@ -34,6 +34,8 @@ final class LibraryModel {
     /// library each time showed up while scrolling and during selection.
     private(set) var visibleRecords: [Release] = []
     private(set) var artistCount = 0
+    /// User-given name for the collection, from the database.
+    private(set) var libraryName: String?
     private(set) var genreCount = 0
     /// Sum of the visible records' estimated value, grouped by currency (so it
     /// reflects the current filter).
@@ -53,6 +55,7 @@ final class LibraryModel {
         reload()
         reloadLocations()
         refreshFacets()
+        reloadName()
         valueRefresh.onChange = { [weak self] in self?.reload() }
     }
 
@@ -61,7 +64,22 @@ final class LibraryModel {
         reload()
         reloadLocations()
         refreshFacets()
+        reloadName()
     }
+
+    // MARK: Library name
+
+    func reloadName() {
+        libraryName = (try? store.libraryName()) ?? nil
+    }
+
+    func setLibraryName(_ name: String?) {
+        try? store.setLibraryName(name)
+        reloadName()
+    }
+
+    /// What to show at the top of the Library screen.
+    var displayName: String { libraryName ?? "Library" }
 
     func startValueRefresh() {
         valueRefresh.start(records: records)

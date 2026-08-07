@@ -365,6 +365,41 @@ public final class LibraryStore: @unchecked Sendable {
         }
     }
 
+    // MARK: - Library metadata
+
+    /// A value from `library_meta`, the key/value table external readers use.
+    public func metadata(_ key: String) throws -> String? {
+        try dbQueue.read { db in
+            try String.fetchOne(db, sql: "SELECT value FROM library_meta WHERE key = ?", arguments: [key])
+        }
+    }
+
+    public func setMetadata(_ key: String, _ value: String?) throws {
+        try dbQueue.write { db in
+            if let value {
+                try db.execute(
+                    sql: "INSERT INTO library_meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = ?",
+                    arguments: [key, value, value])
+            } else {
+                try db.execute(sql: "DELETE FROM library_meta WHERE key = ?", arguments: [key])
+            }
+        }
+    }
+
+    /// What the owner calls this collection. Lives in the database rather than
+    /// app preferences so it travels with an export.
+    public static let libraryNameKey = "library_name"
+
+    public func libraryName() throws -> String? {
+        let name = try metadata(Self.libraryNameKey)?.trimmingCharacters(in: .whitespacesAndNewlines)
+        return (name?.isEmpty == false) ? name : nil
+    }
+
+    public func setLibraryName(_ name: String?) throws {
+        let trimmed = name?.trimmingCharacters(in: .whitespacesAndNewlines)
+        try setMetadata(Self.libraryNameKey, (trimmed?.isEmpty == false) ? trimmed : nil)
+    }
+
     // MARK: - Wishlist
 
     /// Wishlist entries, most recently added first.

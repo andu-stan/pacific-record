@@ -98,10 +98,12 @@ struct LibraryView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 header
-                Text(selecting ? selectionTitle : "Library")
+                Text(selecting ? selectionTitle : model.displayName)
                     .font(.prDisplay)
                     .tracking(-0.8)
                     .foregroundStyle(Palette.label)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.6)
 
                 statCards
                 if searchOpen { searchField }
@@ -182,12 +184,6 @@ struct LibraryView: View {
                 statCard(value: model.count, label: "Records")
                 statCard(value: model.artistCount, label: "Artists")
                 statCard(value: model.genreCount, label: "Genres")
-            }
-            if !model.totalValueByCurrency.isEmpty {
-                Text("≈ \(model.formattedTotalValue) estimated value")
-                    .font(.prCaptionSm)
-                    .monospacedDigit()
-                    .foregroundStyle(Palette.tertiary)
             }
         }
         .padding(.top, 20)

@@ -30,6 +30,7 @@ struct SettingsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
+                librarySection
                 metadataSection
                 tabsSection
                 valueSection
@@ -188,6 +189,32 @@ struct SettingsView: View {
             }
             .padding(.vertical, 12)
             if divider { HRule() }
+        }
+    }
+
+    // MARK: Library
+
+    private var librarySection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            SectionCaption(text: "Library")
+            GroupedCard() {
+                HStack {
+                    Text("Name").font(.prBody).foregroundStyle(Palette.secondary)
+                        .frame(width: 80, alignment: .leading)
+                    TextField("Library", text: Binding(
+                        get: { library.libraryName ?? "" },
+                        set: { library.setLibraryName($0) }
+                    ))
+                    .font(.prBodyEmphasis)
+                    .foregroundStyle(Palette.label)
+                    .multilineTextAlignment(.trailing)
+                    .submitLabel(.done)
+                }
+                .padding(.vertical, 12)
+            }
+            Text("Shown at the top of the Library screen. Stored in the database, so it travels with an export.")
+                .font(.prSmall).foregroundStyle(Palette.tertiary)
+                .padding(.horizontal, 4)
         }
     }
 
