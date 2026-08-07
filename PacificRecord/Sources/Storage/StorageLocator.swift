@@ -15,7 +15,7 @@ struct LibraryLocation: Sendable {
 /// blocking file work (ubiquity lookup, placeholder download, migration copies)
 /// runs off the main actor.
 enum StorageLocator {
-    static let containerIdentifier = "iCloud.com.pacificrecord.app"
+    static let containerIdentifier = "iCloud.ro.sofistic.pacificrecord"
     private static let folderName = "Pacific Record"
     private static let databaseName = "Library.sqlite"
     private static let coversName = "Covers"

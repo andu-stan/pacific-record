@@ -56,7 +56,7 @@
 	<!-- iCloud container — re-enable with a paid Apple Developer team:
 	<key>NSUbiquitousContainers</key>
 	<dict>
-		<key>iCloud.com.pacificrecord.app</key>
+		<key>iCloud.ro.sofistic.pacificrecord</key>
 		<dict>
 			<key>NSUbiquitousContainerIsDocumentScopePublic</key>
 			<true/>
