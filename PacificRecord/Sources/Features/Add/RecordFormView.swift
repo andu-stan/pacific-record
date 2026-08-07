@@ -71,7 +71,7 @@ struct RecordFormView: View {
         _country = State(initialValue: release?.country ?? "")
         _tags = State(initialValue: release.map { [$0.genre].compactMap { $0 } + $0.styles } ?? [])
         _format = State(initialValue: release?.format ?? "LP")
-        _speed = State(initialValue: release?.speed ?? "33⅓")
+        _speed = State(initialValue: release?.displaySpeed ?? "33 1/3")
         _media = State(initialValue: release?.mediaCondition)
         _sleeve = State(initialValue: release?.sleeveCondition)
         _rating = State(initialValue: release?.rating ?? 0)
@@ -268,7 +268,7 @@ struct RecordFormView: View {
             menuCard(title: "Format", value: format,
                      options: ["LP", "EP", "7\"", "10\"", "12\"", "2×LP", "Box Set"]) { format = $0 }
             menuCard(title: "Speed", value: "\(speed) RPM",
-                     options: ["33⅓ RPM", "45 RPM", "78 RPM"]) { speed = $0.replacingOccurrences(of: " RPM", with: "") }
+                     options: ["33 1/3 RPM", "45 RPM", "78 RPM"]) { speed = $0.replacingOccurrences(of: " RPM", with: "") }
         }
     }
 

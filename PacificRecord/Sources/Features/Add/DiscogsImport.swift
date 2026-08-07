@@ -257,7 +257,7 @@ struct DiscogsImportView: View {
             Spacer()
             icon("key.horizontal", Palette.tertiary)
             Text("Connect Discogs first").font(.prTitle2).foregroundStyle(Palette.label)
-            Text("Add your Discogs API token in Settings → Metadata, then come back to import your collection.")
+            Text("Add your Discogs API token in the Metadata section of Settings, then come back to import your collection.")
                 .font(.prBody).foregroundStyle(Palette.secondary).multilineTextAlignment(.center)
             Spacer()
             PrimaryButton(title: "Done") { dismiss() }.padding(.bottom, 8)

@@ -268,7 +268,7 @@ struct RecordDetailContent: View {
                 if let value {
                     HStack(alignment: .center) {
                         VStack(alignment: .leading, spacing: 3) {
-                            Text("≈ \(value.formattedAmount)")
+                            Text(value.formattedAmount)
                                 .font(.system(size: 22, weight: .semibold))
                                 .foregroundStyle(Palette.label)
                             Text(valueSubtitle(value))

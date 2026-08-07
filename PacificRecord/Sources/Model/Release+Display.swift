@@ -27,12 +27,22 @@ extension Release {
         return artistDisplay
     }
 
-    /// "LP · 33⅓ RPM" for the detail info card.
+    /// "LP · 33 1/3 RPM" for the detail info card.
     var formatLine: String {
         var parts: [String] = []
         if let format { parts.append(format) }
-        if let speed { parts.append("\(speed) RPM") }
+        if let speed = displaySpeed { parts.append("\(speed) RPM") }
         return parts.joined(separator: " · ")
+    }
+
+    /// Records saved before the app bundled its own fonts stored the vulgar
+    /// fraction "33⅓", which neither bundled face can draw — CoreText then falls
+    /// back per row and logs about it. Render those as "33 1/3".
+    var displaySpeed: String? {
+        speed?.replacingOccurrences(of: "⅓", with: " 1/3")
+            .replacingOccurrences(of: "⅔", with: " 2/3")
+            .replacingOccurrences(of: "  ", with: " ")
+            .trimmingCharacters(in: .whitespaces)
     }
 
     /// "1959 · US" for the detail info card.
