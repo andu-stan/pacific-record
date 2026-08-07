@@ -21,9 +21,18 @@ struct LibraryView: View {
 
     var body: some View {
         NavigationStack {
-            Group {
+            // The header sits outside the branch so Settings and Add stay
+            // reachable when the library is empty — otherwise a fresh install
+            // has no route to the Discogs token or to restoring a backup.
+            VStack(spacing: 0) {
+                header
+                    .padding(.horizontal, Metrics.screenPadding)
                 if model.isEmpty {
-                    EmptyLibraryView(onAdd: { showAdd = true }, onImport: { showImport = true })
+                    EmptyLibraryView(
+                        onAdd: { showAdd = true },
+                        onImport: { showImport = true },
+                        onSettings: { showSettings = true }
+                    )
                 } else {
                     content
                 }
@@ -97,7 +106,6 @@ struct LibraryView: View {
     private var content: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                header
                 Text(selecting ? selectionTitle : model.displayName)
                     .font(.prDisplay)
                     .tracking(-0.8)
@@ -143,16 +151,19 @@ struct LibraryView: View {
             Spacer()
 
             HStack(spacing: 4) {
-                Button { selecting ? exitSelection() : enterSelection() } label: {
-                    Text(selecting ? "Done" : "Select")
-                        .font(.prCaption)
-                        .tracking(Metrics.overlineTracking)
-                        .textCase(.uppercase)
-                        .foregroundStyle(selecting ? Palette.label : Palette.secondary)
-                        .padding(.horizontal, 14)
-                        .frame(height: 36)
+                // Nothing to select in an empty library.
+                if !model.isEmpty {
+                    Button { selecting ? exitSelection() : enterSelection() } label: {
+                        Text(selecting ? "Done" : "Select")
+                            .font(.prCaption)
+                            .tracking(Metrics.overlineTracking)
+                            .textCase(.uppercase)
+                            .foregroundStyle(selecting ? Palette.label : Palette.secondary)
+                            .padding(.horizontal, 14)
+                            .frame(height: 36)
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
 
                 Button {
                     if selecting { toggleSelectAll() } else { showAdd = true }
@@ -667,6 +678,7 @@ struct LibraryRow: View {
 struct EmptyLibraryView: View {
     var onAdd: () -> Void
     var onImport: () -> Void
+    var onSettings: () -> Void
 
     var body: some View {
         VStack(spacing: 0) {
@@ -682,17 +694,32 @@ struct EmptyLibraryView: View {
                 .padding(.bottom, 28)
 
             PrimaryButton(title: "Add your first record", action: onAdd)
-            Button(action: onImport) {
-                Text("Import from Discogs")
-                    .font(.prCaption)
-                    .tracking(Metrics.overlineTracking)
-                    .textCase(.uppercase)
-                    .foregroundStyle(Palette.tint)
+
+            // A fresh install lands here, so the two ways of arriving with a
+            // collection already in hand need to be reachable from this screen.
+            VStack(spacing: 16) {
+                Button(action: onImport) { linkLabel("Import from Discogs") }
+                    .buttonStyle(.plain)
+                Button(action: onSettings) { linkLabel("Restore a backup") }
+                    .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
             .padding(.top, 20)
+
+            Text("Settings is where you add a Discogs token and restore an exported library.")
+                .font(.prSmall)
+                .foregroundStyle(Palette.tertiary)
+                .multilineTextAlignment(.center)
+                .padding(.top, 24)
         }
         .padding(.horizontal, 40)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private func linkLabel(_ text: String) -> some View {
+        Text(text)
+            .font(.prCaption)
+            .tracking(Metrics.overlineTracking)
+            .textCase(.uppercase)
+            .foregroundStyle(Palette.tint)
     }
 }
