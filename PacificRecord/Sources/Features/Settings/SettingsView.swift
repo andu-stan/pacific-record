@@ -528,10 +528,9 @@ struct SettingsView: View {
     }
 
     /// Unpacks the picked file and shows what's in it before anything is written.
-    private func inspectPicked(_ result: Result<[URL], Error>) {
+    private func inspectPicked(_ result: Result<URL, Error>) {
         switch result {
-        case let .success(urls):
-            guard let url = urls.first else { return }
+        case let .success(url):
             importSummary = nil
             Task {
                 do {
