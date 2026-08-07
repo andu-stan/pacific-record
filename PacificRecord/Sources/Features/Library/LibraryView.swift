@@ -181,31 +181,45 @@ struct LibraryView: View {
     private var statCards: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
-                statCard(value: model.count, label: "Records")
-                statCard(value: model.artistCount, label: "Artists")
-                statCard(value: model.genreCount, label: "Genres")
+                statCard(icon: "opticaldisc", value: model.count, label: "Records")
+                statCard(icon: "music.mic", value: model.artistCount, label: "Artists")
+                statCard(icon: "guitars", value: model.genreCount, label: "Genres")
             }
         }
         .padding(.top, 20)
         .padding(.bottom, 16)
     }
 
-    private func statCard(value: Int, label: String) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("\(value)")
-                .font(.prStatValue)
-                .tracking(-0.5)
-                .foregroundStyle(Palette.label)
-            Text(label.uppercased())
-                .font(.prCaption)
-                .tracking(Metrics.overlineTracking)
-                .foregroundStyle(Palette.tertiary)
+    /// Stat card per the design system: a light-stroke icon at
+    /// `--text-secondary`, then the value over its overline label.
+    private func statCard(icon: String, value: Int, label: String) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 18, weight: .light))
+                .foregroundStyle(Palette.secondary)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("\(value)")
+                    .font(.prStatValue)
+                    .tracking(-0.5)
+                    .foregroundStyle(Palette.label)
+                    // Three cards across an iPhone leaves little room, so a
+                    // five-figure count shrinks rather than wrapping.
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
+                Text(label.uppercased())
+                    .font(.prCaption)
+                    .tracking(Metrics.overlineTracking)
+                    .foregroundStyle(Palette.tertiary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 16)
+        .padding(.horizontal, 12)
         .padding(.vertical, 14)
         .background(Palette.surface2, in: RoundedRectangle(cornerRadius: Metrics.cardRadius, style: .continuous))
         .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(value) \(label)")
     }
 
     private var searchField: some View {
