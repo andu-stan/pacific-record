@@ -34,6 +34,7 @@ final class LibraryModel {
     /// library each time showed up while scrolling and during selection.
     private(set) var visibleRecords: [Release] = []
     private(set) var artistCount = 0
+    private(set) var genreCount = 0
     /// Sum of the visible records' estimated value, grouped by currency (so it
     /// reflects the current filter).
     private(set) var totalValueByCurrency: [String: Double] = [:]
@@ -105,15 +106,18 @@ final class LibraryModel {
         visibleRecords = filter.isActive ? records.filter(filter.matches) : records
 
         var artists = Set<String>()
+        var genres = Set<String>()
         var totals: [String: Double] = [:]
         artists.reserveCapacity(visibleRecords.count)
         for record in visibleRecords {
             artists.insert(record.artistDisplay)
+            if let genre = record.genre, !genre.isEmpty { genres.insert(genre) }
             if let amount = record.estimatedValue, let currency = record.valueCurrency {
                 totals[currency, default: 0] += amount
             }
         }
         artistCount = artists.count
+        genreCount = genres.count
         totalValueByCurrency = totals
     }
 

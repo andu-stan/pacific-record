@@ -1,6 +1,9 @@
 import SwiftUI
 import VinylCore
 
+/// The Library screen, built to the "Vinyl Library" design: an in-content
+/// header (settings / select / add), a serif display title, a row of stat
+/// cards, a pill control strip, and either a 3-up cover grid or a list.
 struct LibraryView: View {
     @Environment(LibraryModel.self) private var model
     @State private var showAdd = false
@@ -13,6 +16,7 @@ struct LibraryView: View {
     @State private var selecting = false
     @State private var selectedIDs: Set<String> = []
     @State private var confirmBulkDelete = false
+    @State private var searchOpen = false
     @FocusState private var searchFocused: Bool
 
     var body: some View {
@@ -25,15 +29,15 @@ struct LibraryView: View {
                 }
             }
             .background(Palette.background)
-            .navigationTitle(navTitle)
+            .navigationBarTitleDisplayMode(.inline)
+            // The design carries the title and its actions in the content, so
+            // the system bar is hidden on the root screen.
+            .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: String.self) { id in
                 RecordDetailScreen(recordID: id)
             }
-            .toolbar { toolbarContent }
+            .toolbar { keyboardToolbar }
             .tint(Palette.tint)
-            // An overlay rather than `safeAreaInset`: the inset was applied even
-            // when not selecting, and it competed with SwiftUI's keyboard
-            // avoidance, leaving the last rows underneath the keyboard.
             .overlay(alignment: .bottom) {
                 if selecting {
                     BulkActionBar(
@@ -42,9 +46,6 @@ struct LibraryView: View {
                         onAssign: assignLocation,
                         onDelete: { confirmBulkDelete = true }
                     )
-                    // Slide it in at full height; without a transition the
-                    // material background gets rendered at zero height as the
-                    // bar appears, which the render server complains about.
                     .transition(.move(edge: .bottom))
                 }
             }
@@ -91,63 +92,20 @@ struct LibraryView: View {
         }
     }
 
-    // MARK: Main content
+    // MARK: Content
 
     private var content: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("\(model.count) records · \(model.artistCount) artists")
-                        .font(.prNumeric)
-                        .foregroundStyle(Palette.secondary)
-                    if !model.totalValueByCurrency.isEmpty {
-                        Text("≈ \(model.formattedTotalValue) estimated value")
-                            .font(.prCaptionSm)
-                            .monospacedDigit()
-                            .foregroundStyle(Palette.tertiary)
-                    }
-                }
-                .padding(.top, 2)
-                .padding(.bottom, 14)
+                header
+                Text(selecting ? selectionTitle : "Library")
+                    .font(.prDisplay)
+                    .tracking(-0.8)
+                    .foregroundStyle(Palette.label)
 
-                HStack(spacing: 8) {
-                    Image(systemName: "magnifyingglass")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(Palette.tertiary)
-                    TextField("Search title, artist, label",
-                              text: Binding(get: { model.searchText }, set: { model.searchText = $0 }))
-                        .font(.prBody)
-                        .foregroundStyle(Palette.label)
-                        .autocorrectionDisabled()
-                        .textInputAutocapitalization(.never)
-                        .focused($searchFocused)
-                        .submitLabel(.search)
-                        .onSubmit { searchFocused = false }
-                    if !model.searchText.isEmpty {
-                        Button {
-                            model.searchText = ""
-                            model.reload()
-                        } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.system(size: 15))
-                                .foregroundStyle(Palette.tertiary)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("Clear search")
-                    }
-                }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 9)
-                .background(Palette.controlFill, in: Capsule())
-                .onChange(of: model.searchText) { model.reload() }
-
-                HStack(spacing: 8) {
-                    sortMenu
-                    filterButton
-                    Spacer()
-                    layoutToggle
-                }
-                .padding(.vertical, 14)
+                statCards
+                if searchOpen { searchField }
+                controlStrip
 
                 if model.visibleRecords.isEmpty {
                     emptyResults
@@ -160,76 +118,261 @@ struct LibraryView: View {
                 }
             }
             .padding(.horizontal, Metrics.screenPadding)
-            // Extra room so the floating bulk-action bar doesn't sit on top of
-            // the last row while selecting.
-            .padding(.bottom, selecting ? 96 : 28)
+            .padding(.top, 12)
+            .padding(.bottom, selecting ? 96 : 32)
         }
-        // Swiping the list down dismisses the keyboard — the search field is
-        // inside the scroll view, so there was otherwise no way to put it away.
         .scrollDismissesKeyboard(.interactively)
         .refreshable { model.refreshAll() }
     }
 
-    private var emptyResults: some View {
-        VStack(spacing: 10) {
-            Image(systemName: "line.3.horizontal.decrease.circle")
-                .font(.system(size: 34))
+    /// Settings on the left; a pill group carrying Select and Add on the right.
+    private var header: some View {
+        HStack(spacing: 0) {
+            Button { showSettings = true } label: {
+                Image(systemName: "gearshape")
+                    .font(.system(size: 20, weight: .regular))
+                    .foregroundStyle(Palette.secondary)
+                    .frame(width: 44, height: 44)
+            }
+            .buttonStyle(.plain)
+            .padding(.leading, -10)
+            .accessibilityLabel("Settings")
+
+            Spacer()
+
+            HStack(spacing: 4) {
+                Button { selecting ? exitSelection() : enterSelection() } label: {
+                    Text(selecting ? "Done" : "Select")
+                        .font(.prCaption)
+                        .tracking(Metrics.overlineTracking)
+                        .textCase(.uppercase)
+                        .foregroundStyle(selecting ? Palette.label : Palette.secondary)
+                        .padding(.horizontal, 14)
+                        .frame(height: 36)
+                }
+                .buttonStyle(.plain)
+
+                Button {
+                    if selecting { toggleSelectAll() } else { showAdd = true }
+                } label: {
+                    Image(systemName: selecting ? (allSelected ? "minus" : "checkmark") : "plus")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(Palette.onPrimary)
+                        .frame(width: 36, height: 36)
+                        .background(Palette.primaryFill, in: Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(selecting ? (allSelected ? "Deselect all" : "Select all") : "Add record")
+            }
+            .padding(4)
+            .background(Palette.fill, in: Capsule())
+        }
+        .frame(height: 48)
+        .padding(.bottom, 8)
+    }
+
+    private var selectionTitle: String {
+        selectedIDs.isEmpty ? "Select" : "\(selectedIDs.count) selected"
+    }
+
+    /// Records · Artists · Genres, all reflecting the current filter.
+    private var statCards: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                statCard(value: model.count, label: "Records")
+                statCard(value: model.artistCount, label: "Artists")
+                statCard(value: model.genreCount, label: "Genres")
+            }
+            if !model.totalValueByCurrency.isEmpty {
+                Text("≈ \(model.formattedTotalValue) estimated value")
+                    .font(.prCaptionSm)
+                    .monospacedDigit()
+                    .foregroundStyle(Palette.tertiary)
+            }
+        }
+        .padding(.top, 20)
+        .padding(.bottom, 16)
+    }
+
+    private func statCard(value: Int, label: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("\(value)")
+                .font(.prStatValue)
+                .tracking(-0.5)
+                .foregroundStyle(Palette.label)
+            Text(label.uppercased())
+                .font(.prCaption)
+                .tracking(Metrics.overlineTracking)
                 .foregroundStyle(Palette.tertiary)
-            Text(emptyResultsMessage)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .background(Palette.surface2, in: RoundedRectangle(cornerRadius: Metrics.cardRadius, style: .continuous))
+        .accessibilityElement(children: .combine)
+    }
+
+    private var searchField: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 15, weight: .regular))
+                .foregroundStyle(Palette.tertiary)
+            TextField("Search title, artist, label",
+                      text: Binding(get: { model.searchText }, set: { model.searchText = $0 }))
                 .font(.prBody)
-                .foregroundStyle(Palette.secondary)
+                .foregroundStyle(Palette.label)
+                .autocorrectionDisabled()
+                .textInputAutocapitalization(.never)
+                .focused($searchFocused)
+                .submitLabel(.search)
+                .onSubmit { searchFocused = false }
+                .onChange(of: model.searchText) { model.reload() }
+            Button {
+                model.searchText = ""
+                model.reload()
+                searchFocused = false
+                withAnimation(.easeInOut(duration: 0.2)) { searchOpen = false }
+            } label: {
+                Text("Clear")
+                    .font(.prCaption)
+                    .tracking(Metrics.overlineTracking)
+                    .textCase(.uppercase)
+                    .foregroundStyle(Palette.tertiary)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(Palette.grouped, in: Capsule())
+        .padding(.bottom, 12)
+    }
+
+    /// Search toggle, sort, filter, and the grid/list segmented control.
+    private var controlStrip: some View {
+        HStack(spacing: 8) {
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) { searchOpen.toggle() }
+                searchFocused = searchOpen
+            } label: {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(searchOpen ? Palette.onPrimary : Palette.secondary)
+                    .frame(width: 28, height: 28)
+                    .background(searchOpen ? Palette.primaryFill : Palette.fill, in: Circle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Search")
+
+            sortPill
+            filterPill
+
+            Spacer(minLength: 0)
+
+            HStack(spacing: 2) {
+                layoutButton(icon: "square.grid.2x2", layout: .grid)
+                layoutButton(icon: "list.bullet", layout: .list)
+            }
+            .padding(3)
+            .background(Palette.grouped, in: Capsule())
+        }
+        .padding(.bottom, 16)
+    }
+
+    private var sortPill: some View {
+        Menu {
+            ForEach(LibraryStore.SortOrder.allCases, id: \.self) { order in
+                Button {
+                    model.sort = order
+                    model.reload()
+                } label: {
+                    if model.sort == order {
+                        Label(order.label, systemImage: "checkmark")
+                    } else {
+                        Text(order.label)
+                    }
+                }
+            }
+        } label: {
+            Text("Sort · \(model.sort.label)".uppercased())
+                .font(.prCaption)
+                .tracking(Metrics.overlineTracking)
+                .foregroundStyle(Palette.label)
+                .padding(.horizontal, 14)
+                .frame(height: 28)
+                .background(Palette.fill, in: Capsule())
+        }
+        .accessibilityLabel("Sort by \(model.sort.label)")
+    }
+
+    private var filterPill: some View {
+        Button { showFilter = true } label: {
+            HStack(spacing: 6) {
+                Text(model.filter.isActive ? "Filtered" : "Filter")
+                    .font(.prCaption)
+                    .tracking(Metrics.overlineTracking)
+                    .textCase(.uppercase)
+                if model.filter.activeCount > 0 {
+                    Text("\(model.filter.activeCount)")
+                        .font(.system(size: 10, weight: .semibold))
+                        .monospacedDigit()
+                }
+            }
+            .foregroundStyle(model.filter.isActive ? Palette.onPrimary : Palette.secondary)
+            .padding(.horizontal, 14)
+            .frame(height: 28)
+            .background(model.filter.isActive ? Palette.primaryFill : Palette.fill, in: Capsule())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func layoutButton(icon: String, layout: LibraryLayout) -> some View {
+        let active = model.layout == layout
+        return Button {
+            model.layout = layout
+        } label: {
+            Image(systemName: icon)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(active ? Palette.label : Palette.tertiary)
+                .frame(width: 34, height: 28)
+                .background(active ? Palette.segmentSelected : Color.clear, in: Capsule())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(layout == .grid ? "Grid view" : "List view")
+        .accessibilityAddTraits(active ? [.isButton, .isSelected] : .isButton)
+    }
+
+    private var emptyResults: some View {
+        VStack(spacing: 12) {
+            Text(emptyResultsMessage)
+                .font(.prSmall)
+                .foregroundStyle(Palette.tertiary)
                 .multilineTextAlignment(.center)
             if model.filter.isActive {
-                Button("Clear filters") { model.clearFilter() }
-                    .font(.prHeadline)
-                    .foregroundStyle(Palette.tint)
-                    .padding(.top, 2)
+                Button { model.clearFilter() } label: {
+                    Text("Clear filters")
+                        .font(.prCaption)
+                        .tracking(Metrics.overlineTracking)
+                        .textCase(.uppercase)
+                        .foregroundStyle(Palette.tint)
+                }
+                .buttonStyle(.plain)
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(.top, 48)
-        .padding(.horizontal, 20)
+        .padding(.vertical, 48)
     }
 
     private var emptyResultsMessage: String {
-        let searching = !model.searchText.trimmingCharacters(in: .whitespaces).isEmpty
-        switch (searching, model.filter.isActive) {
-        case (true, true): return "No records match your search and filters."
-        case (true, false): return "No records match “\(model.searchText)”."
-        default: return "No records match the current filters."
+        let query = model.searchText.trimmingCharacters(in: .whitespaces)
+        switch (query.isEmpty, model.filter.isActive) {
+        case (false, true): return "Nothing matches “\(query)” with these filters."
+        case (false, false): return "Nothing matches “\(query)”."
+        default: return "Nothing matches the current filters."
         }
-    }
-
-    // MARK: Toolbar
-
-    private var navTitle: String {
-        guard selecting else { return "Library" }
-        return selectedIDs.isEmpty ? "Select records" : "\(selectedIDs.count) selected"
     }
 
     @ToolbarContentBuilder
-    private var toolbarContent: some ToolbarContent {
-        if selecting {
-            ToolbarItem(placement: .topBarLeading) {
-                Button("Done") { exitSelection() }.fontWeight(.semibold)
-            }
-            ToolbarItem(placement: .topBarTrailing) {
-                Button(allSelected ? "Deselect All" : "Select All") { toggleSelectAll() }
-                    .disabled(model.visibleRecords.isEmpty)
-            }
-        } else {
-            ToolbarItem(placement: .topBarLeading) {
-                Button { showSettings = true } label: { Image(systemName: "gearshape") }
-                    .accessibilityLabel("Settings")
-            }
-            ToolbarItemGroup(placement: .topBarTrailing) {
-                Button { enterSelection() } label: { Image(systemName: "checkmark.circle") }
-                    .accessibilityLabel("Select records")
-                Button { showAdd = true } label: { Image(systemName: "plus").fontWeight(.semibold) }
-                    .accessibilityLabel("Add record")
-            }
-        }
-        // Always reachable way to put the keyboard away.
+    private var keyboardToolbar: some ToolbarContent {
         ToolbarItemGroup(placement: .keyboard) {
             Spacer()
             Button("Done") { searchFocused = false }
@@ -253,7 +396,7 @@ struct LibraryView: View {
     }
 
     private func enterSelection() {
-        searchFocused = false   // the keyboard has no place in selection mode
+        searchFocused = false
         selectedIDs = []
         withAnimation(.easeInOut(duration: 0.2)) { selecting = true }
     }
@@ -277,90 +420,6 @@ struct LibraryView: View {
         model.delete(ids: selectedIDs)
         Haptics.success()
         exitSelection()
-    }
-
-    // MARK: Sort / filter / layout
-
-    private var sortMenu: some View {
-        Menu {
-            ForEach(LibraryStore.SortOrder.allCases, id: \.self) { order in
-                Button {
-                    model.sort = order
-                    model.reload()
-                } label: {
-                    if model.sort == order {
-                        Label(order.label, systemImage: "checkmark")
-                    } else {
-                        Text(order.label)
-                    }
-                }
-            }
-        } label: {
-            HStack(spacing: 6) {
-                Text(model.sort.label.uppercased())
-                    .font(.prCaption)
-                    .tracking(Metrics.overlineTracking)
-                    .foregroundStyle(Palette.secondary)
-                Image(systemName: "chevron.down")
-                    .font(.system(size: 9, weight: .semibold))
-                    .foregroundStyle(Palette.tertiary)
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 6)
-            .background(Palette.fill, in: Capsule())
-        }
-        .accessibilityLabel("Sort by \(model.sort.label)")
-    }
-
-    private var filterButton: some View {
-        Button { showFilter = true } label: {
-            HStack(spacing: 6) {
-                Image(systemName: "line.3.horizontal.decrease")
-                    .font(.system(size: 11, weight: .semibold))
-                Text("Filter".uppercased())
-                    .font(.prCaption)
-                    .tracking(Metrics.overlineTracking)
-                if model.filter.activeCount > 0 {
-                    Text("\(model.filter.activeCount)")
-                        .font(.system(size: 10, weight: .semibold))
-                        .monospacedDigit()
-                        .foregroundStyle(Palette.onPrimary)
-                        .frame(minWidth: 16, minHeight: 16)
-                        .background(Palette.accent, in: Circle())
-                }
-            }
-            .foregroundStyle(model.filter.isActive ? Palette.accent : Palette.secondary)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 6)
-            .background(Palette.fill, in: Capsule())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(model.filter.activeCount > 0 ? "Filter, \(model.filter.activeCount) active" : "Filter")
-    }
-
-    private var layoutToggle: some View {
-        HStack(spacing: 0) {
-            layoutButton(icon: "square.grid.2x2.fill", layout: .grid)
-            layoutButton(icon: "list.bullet", layout: .list)
-        }
-        .padding(3)
-        .background(Palette.controlFill, in: Capsule())
-    }
-
-    private func layoutButton(icon: String, layout: LibraryLayout) -> some View {
-        let active = model.layout == layout
-        return Button {
-            model.layout = layout
-        } label: {
-            Image(systemName: icon)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(active ? Palette.label : Palette.tertiary)
-                .frame(width: 34, height: 26)
-                .background(active ? Palette.segmentSelected : Color.clear, in: Capsule())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(layout == .grid ? "Grid view" : "List view")
-        .accessibilityAddTraits(active ? [.isButton, .isSelected] : .isButton)
     }
 }
 
@@ -398,19 +457,17 @@ struct BulkActionBar: View {
             Spacer()
 
             Text(count == 0 ? "Nothing selected" : "\(count) selected")
-                .font(.prFootnote)
+                .font(.prCaptionSm)
+                .monospacedDigit()
                 .foregroundStyle(Palette.secondary)
                 .padding(.trailing, 4)
         }
         .padding(.horizontal, Metrics.screenPadding)
         .padding(.top, 10)
         .padding(.bottom, 4)
-        // Extends the blur behind the home indicator; as an overlay (rather
-        // than a safe-area inset) the bar sits inside the safe area.
         .background {
             Rectangle().fill(Palette.chrome).ignoresSafeArea(edges: .bottom)
         }
-        // A hairline, not a shadow.
         .overlay(alignment: .top) { Rectangle().fill(Palette.separator).frame(height: 1) }
     }
 
@@ -436,10 +493,10 @@ struct LibraryGrid: View {
     var selectedIDs: Set<String> = []
     var onToggle: (String) -> Void = { _ in }
 
-    private let columns = Array(repeating: GridItem(.flexible(), spacing: 11), count: 3)
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: 10), count: 3)
 
     var body: some View {
-        LazyVGrid(columns: columns, spacing: 14) {
+        LazyVGrid(columns: columns, spacing: 16) {
             ForEach(records) { release in
                 if selecting {
                     Button { onToggle(release.id) } label: {
@@ -457,29 +514,43 @@ struct LibraryGrid: View {
     }
 
     private func cell(_ release: Release, selected: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 8) {
             CoverArtView(seed: release.coverSeed, coverPath: release.listCoverPath, maxPixel: CoverSize.tile)
                 .aspectRatio(1, contentMode: .fit)
-                // Artwork is separated by value, not by a drop shadow.
-                .shadow(color: .black.opacity(0.22), radius: 3, y: 2)
+                // The pressing year sits quietly in the corner of the sleeve.
+                .overlay(alignment: .bottomLeading) {
+                    if let year = release.year, !selecting {
+                        Text(String(year))
+                            .font(.prMonoTiny)
+                            .tracking(0.4)
+                            .foregroundStyle(.white.opacity(0.9))
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 2)
+                            .background(.black.opacity(0.4), in: RoundedRectangle(cornerRadius: 3))
+                            .padding(6)
+                    }
+                }
                 .overlay {
                     if selected {
                         RoundedRectangle(cornerRadius: Metrics.tileRadius, style: .continuous)
-                            .strokeBorder(Palette.accent, lineWidth: 3)
+                            .strokeBorder(Palette.accent, lineWidth: 2)
                     }
                 }
                 .overlay(alignment: .topTrailing) {
                     if selecting { SelectionBadge(selected: selected) }
                 }
                 .opacity(selecting && !selected ? 0.72 : 1)
-            Text(release.title)
-                .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(Palette.label)
-                .lineLimit(1)
-            Text(release.artistDisplay)
-                .font(.prCaptionSm)
-                .foregroundStyle(Palette.tertiary)
-                .lineLimit(1)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(release.title)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Palette.label)
+                    .lineLimit(1)
+                Text(release.artistDisplay)
+                    .font(.prCaptionSm)
+                    .foregroundStyle(Palette.secondary)
+                    .lineLimit(1)
+            }
         }
     }
 }
@@ -489,7 +560,7 @@ struct SelectionBadge: View {
 
     var body: some View {
         ZStack {
-            Circle().fill(selected ? Palette.accent : Color.black.opacity(0.4))
+            Circle().fill(selected ? Palette.accent : Color.black.opacity(0.45))
             Circle().strokeBorder(Color.white.opacity(0.9), lineWidth: 1.5)
             if selected {
                 Image(systemName: "checkmark")
@@ -538,7 +609,9 @@ struct LibraryRow: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 13) {
+            // Rows are divided by a rule above them, per the design.
+            Rectangle().fill(Palette.separator).frame(height: 1)
+            HStack(spacing: 16) {
                 if selecting {
                     Image(systemName: selected ? "checkmark.circle.fill" : "circle")
                         .font(.system(size: 20))
@@ -547,37 +620,34 @@ struct LibraryRow: View {
                 CoverArtView(seed: release.coverSeed, coverPath: release.listCoverPath,
                              cornerRadius: Metrics.tileRadius, maxPixel: CoverSize.row)
                     .frame(width: 56, height: 56)
-                    .shadow(color: .black.opacity(0.18), radius: 2, y: 1)
-                VStack(alignment: .leading, spacing: 2) {
+
+                VStack(alignment: .leading, spacing: 0) {
                     Text(release.title)
-                        .font(.prBodyEmphasis)
+                        .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(Palette.label)
                         .lineLimit(1)
                     Text(release.listSubtitle)
-                        .font(.prFootnote)
+                        .font(.prSmall)
                         .foregroundStyle(Palette.secondary)
                         .lineLimit(1)
                 }
                 Spacer(minLength: 8)
+
                 VStack(alignment: .trailing, spacing: 4) {
                     if showValue, let value = release.formattedValue {
                         Text(value)
-                            .font(.prNumeric)
-                            .foregroundStyle(Palette.secondary)
-                            .lineLimit(1)
+                            .font(.prCaptionSm)
+                            .monospacedDigit()
+                            .foregroundStyle(Palette.tertiary)
                     }
-                    if let media = release.mediaCondition {
-                        GradePill(text: media.rawValue)
+                    if let format = release.formatBadge {
+                        Text(format)
+                            .font(.prMonoSmall)
+                            .foregroundStyle(Palette.tertiary)
                     }
-                }
-                if !selecting {
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(Palette.quaternary)
                 }
             }
-            .padding(.vertical, 9)
-            HRule()
+            .padding(.vertical, 12)
         }
     }
 }
@@ -590,42 +660,29 @@ struct EmptyLibraryView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            ZStack {
-                Circle()
-                    .fill(RadialGradient(
-                        colors: [Color(hex: 0x2A2A2C), Color(hex: 0x161618)],
-                        center: UnitPoint(x: 0.5, y: 0.42),
-                        startRadius: 2, endRadius: 72))
-                    .overlay(Circle().strokeBorder(Palette.separator, lineWidth: 1))
-                Circle().strokeBorder(Color.white.opacity(0.10), lineWidth: 1).padding(44)
-                Circle()
-                    .fill(Palette.accent)
-                    .frame(width: 34, height: 34)
-                    .shadow(color: Palette.accent.opacity(0.5), radius: 12)
-            }
-            .frame(width: 132, height: 132)
-            .padding(.bottom, 26)
-
-            Text("Start your collection")
-                .font(.prTitle2)
+            Text("Library")
+                .font(.prDisplay)
+                .tracking(-0.8)
                 .foregroundStyle(Palette.label)
-                .padding(.bottom, 10)
+                .padding(.bottom, 12)
             Text("Scan a barcode, search by title, or add a record by hand. Your library is saved on this iPhone.")
                 .font(.prBody)
                 .foregroundStyle(Palette.secondary)
                 .multilineTextAlignment(.center)
-                .padding(.bottom, 26)
+                .padding(.bottom, 28)
 
             PrimaryButton(title: "Add your first record", action: onAdd)
             Button(action: onImport) {
                 Text("Import from Discogs")
-                    .font(.prHeadline)
+                    .font(.prCaption)
+                    .tracking(Metrics.overlineTracking)
+                    .textCase(.uppercase)
                     .foregroundStyle(Palette.tint)
             }
             .buttonStyle(.plain)
-            .padding(.top, 18)
+            .padding(.top, 20)
         }
-        .padding(.horizontal, 44)
+        .padding(.horizontal, 40)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }

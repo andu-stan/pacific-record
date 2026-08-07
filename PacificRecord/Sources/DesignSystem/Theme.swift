@@ -133,8 +133,15 @@ enum Palette {
 // anything structural — nothing heavier.
 
 extension Font {
-    /// Display — the single expressive moment on a screen.
-    static let prDisplay = Font.system(size: 34, weight: .semibold)
+    /// Display — the single expressive moment on a screen. The source design
+    /// calls for Playfair Display; this uses New York, Apple's system serif, so
+    /// the serif moment survives without bundling a third-party face.
+    static let prDisplay = Font.system(size: 40, weight: .regular, design: .serif)
+    /// Numeric value on a stat card (tabular).
+    static let prStatValue = Font.system(size: 24, weight: .semibold).monospacedDigit()
+    /// Mono metadata — the year on a tile, the format on a row.
+    static let prMonoTiny = Font.system(size: 9, weight: .regular, design: .monospaced)
+    static let prMonoSmall = Font.system(size: 10, weight: .regular, design: .monospaced)
     /// Big numeric value (tabular).
     static let prStat = Font.system(size: 32, weight: .semibold).monospacedDigit()
 

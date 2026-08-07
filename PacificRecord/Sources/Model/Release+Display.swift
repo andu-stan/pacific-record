@@ -9,6 +9,12 @@ extension Release {
     /// have one, so browsing never decodes a full-resolution scan.
     var listCoverPath: String? { thumbPath ?? coverPath }
 
+    /// "LP" / "2×LP" for the mono badge on a list row.
+    var formatBadge: String? {
+        guard let format, !format.isEmpty else { return nil }
+        return discCount > 1 ? "\(discCount)×\(format)" : format
+    }
+
     /// "$42.00" when the record has been valued, else nil.
     var formattedValue: String? {
         guard let amount = estimatedValue, let currency = valueCurrency else { return nil }
