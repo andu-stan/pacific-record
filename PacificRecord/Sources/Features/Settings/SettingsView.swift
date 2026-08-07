@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 import VinylCore
 
 struct SettingsView: View {
@@ -16,6 +17,11 @@ struct SettingsView: View {
     @State private var exportFile: LibraryExporter.ExportFile?
     @State private var isExporting = false
     @State private var exportError: String?
+    @State private var showImportPicker = false
+    @State private var importPreview: LibraryImporter.Preview?
+    @State private var importProgress: Double?
+    @State private var importSummary: LibraryImporter.Summary?
+    @State private var confirmReplace = false
 
     private var isConnected: Bool { !token.isEmpty }
 
@@ -54,6 +60,53 @@ struct SettingsView: View {
         } message: {
             Text(exportError ?? "")
         }
+        .fileImporter(
+            isPresented: $showImportPicker,
+            allowedContentTypes: [.zip, UTType(filenameExtension: "sqlite") ?? .data],
+            onCompletion: inspectPicked
+        )
+        // What's in the file, and what to do with it — nothing is written yet.
+        .confirmationDialog(
+            importPreview.map { "\($0.recordCount) records in \($0.fileName)" } ?? "",
+            isPresented: Binding(
+                get: { importPreview != nil },
+                set: { if !$0, let preview = importPreview { LibraryImporter.discard(preview); importPreview = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            if let preview = importPreview {
+                Button("Merge into this library") { runImport(preview, mode: .merge) }
+                Button("Replace everything", role: .destructive) { confirmReplace = true }
+            }
+            Button("Cancel", role: .cancel) {
+                if let preview = importPreview { LibraryImporter.discard(preview) }
+                importPreview = nil
+            }
+        } message: {
+            if let preview = importPreview {
+                Text(previewMessage(preview))
+            }
+        }
+        // Replacing throws away the current library, so it asks twice.
+        .alert("Replace your library?", isPresented: $confirmReplace) {
+            Button("Replace", role: .destructive) {
+                if let preview = importPreview { runImport(preview, mode: .replace) }
+            }
+            Button("Cancel", role: .cancel) {
+                if let preview = importPreview { LibraryImporter.discard(preview) }
+                importPreview = nil
+            }
+        } message: {
+            Text("Every record now in Pacific Record will be deleted and replaced with the backup. This can't be undone — export a copy first if you're unsure.")
+        }
+    }
+
+    private func previewMessage(_ preview: LibraryImporter.Preview) -> String {
+        var parts: [String] = []
+        if preview.locationCount > 0 { parts.append("\(preview.locationCount) locations") }
+        if preview.coverCount > 0 { parts.append("\(preview.coverCount) covers") }
+        let contents = parts.isEmpty ? "" : " (plus " + parts.joined(separator: " and ") + ")"
+        return "Merge keeps what you already have and adds anything missing\(contents). Replace deletes your current \(library.records.count) records first."
     }
 
     // MARK: Metadata
@@ -424,6 +477,90 @@ struct SettingsView: View {
             Text("The zip holds the database and every cover — a complete backup. The database on its own opens in any SQLite tool.")
                 .font(.prSmall).foregroundStyle(Palette.tertiary)
                 .padding(.horizontal, 4)
+
+            GroupedCard() {
+                Button { showImportPicker = true } label: {
+                    HStack(spacing: 12) {
+                        ZStack {
+                            RoundedRectangle(cornerRadius: Metrics.tileRadius, style: .continuous)
+                                .fill(Palette.accent.opacity(0.16))
+                                .frame(width: 30, height: 30)
+                            Image(systemName: "square.and.arrow.down")
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundStyle(Palette.accent)
+                        }
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Import backup").font(.prBody).foregroundStyle(Palette.label)
+                            Text(importStatus).font(.prSmall).foregroundStyle(Palette.tertiary)
+                        }
+                        Spacer()
+                        if let importProgress {
+                            ProgressView(value: importProgress)
+                                .frame(width: 54)
+                                .tint(Palette.accent)
+                        } else {
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(Palette.quaternary)
+                        }
+                    }
+                    .padding(.vertical, 10)
+                }
+                .buttonStyle(.plain)
+                .disabled(importProgress != nil)
+            }
+
+            Text("Restores a .zip or .sqlite backup. You choose whether to merge it into this library or replace everything.")
+                .font(.prSmall).foregroundStyle(Palette.tertiary)
+                .padding(.horizontal, 4)
+        }
+    }
+
+    private var importStatus: String {
+        if importProgress != nil { return "Importing…" }
+        if let summary = importSummary {
+            var parts = ["Added \(summary.imported)"]
+            if summary.skipped > 0 { parts.append("skipped \(summary.skipped) already here") }
+            if summary.covers > 0 { parts.append("\(summary.covers) covers") }
+            return parts.joined(separator: " · ")
+        }
+        return "Restore from a .zip or .sqlite"
+    }
+
+    /// Unpacks the picked file and shows what's in it before anything is written.
+    private func inspectPicked(_ result: Result<[URL], Error>) {
+        switch result {
+        case let .success(urls):
+            guard let url = urls.first else { return }
+            importSummary = nil
+            Task {
+                do {
+                    importPreview = try await LibraryImporter.prepare(from: url)
+                } catch {
+                    exportError = error.localizedDescription
+                    Haptics.warning()
+                }
+            }
+        case let .failure(error):
+            exportError = error.localizedDescription
+        }
+    }
+
+    private func runImport(_ preview: LibraryImporter.Preview, mode: LibraryImporter.Mode) {
+        importPreview = nil
+        importProgress = 0
+        Task {
+            do {
+                importSummary = try await library.importLibrary(preview, mode: mode) { fraction in
+                    Task { @MainActor in importProgress = fraction }
+                }
+                Haptics.success()
+            } catch {
+                exportError = error.localizedDescription
+                Haptics.warning()
+            }
+            LibraryImporter.discard(preview)
+            importProgress = nil
         }
     }
 

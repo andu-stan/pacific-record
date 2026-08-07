@@ -345,6 +345,39 @@ public final class LibraryStore: @unchecked Sendable {
         }
     }
 
+    // MARK: - Import support
+
+    /// Removes every record (and, via cascade, its artists/labels/tracks) plus
+    /// the search index. Locations are kept — see `deleteAllLocations()`.
+    /// Used by a "replace" restore.
+    public func deleteAllReleases() throws {
+        try dbQueue.write { db in
+            try db.execute(sql: "DELETE FROM release")
+            try db.execute(sql: "DELETE FROM release_fts")
+        }
+    }
+
+    public func deleteAllLocations() throws {
+        try dbQueue.write { db in
+            try db.execute(sql: "DELETE FROM location")
+        }
+    }
+
+    /// Inserts or updates a location, preserving its id — so a restored library
+    /// keeps the location references its records already carry.
+    public func saveLocation(_ location: Location) throws {
+        try dbQueue.write { db in
+            try location.save(db)
+        }
+    }
+
+    /// Ids of every record, for cheap "is this already here?" checks during a merge.
+    public func allReleaseIDs() throws -> Set<String> {
+        try dbQueue.read { db in
+            Set(try String.fetchAll(db, sql: "SELECT id FROM release"))
+        }
+    }
+
     // MARK: - Bulk operations
 
     /// Assigns (or clears, with `nil`) the location of many records in one

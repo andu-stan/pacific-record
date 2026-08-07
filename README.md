@@ -135,6 +135,16 @@ To enable it once you have a **paid Apple Developer** team:
     sheet (Files, AirDrop, Mail…). The snapshot uses SQLite's `VACUUM INTO`, so
     it's a consistent, compacted copy of the live database rather than a raw
     file copy.
+  - **Import a backup** — Settings › Storage › **Import backup** restores a
+    `.zip` or `.sqlite`. The file is unpacked and inspected first, so you see
+    what's in it (records, locations, covers) before anything is written, then
+    choose **Merge** (add what's missing, keep what you have) or **Replace**
+    (wipe and restore, behind a second confirmation). The restore runs at the
+    data level — the backup is opened as a second store and copied through the
+    normal API — so the live database is never swapped underneath an open
+    connection, and an older backup is migrated to the current schema on the
+    way in. Reading the zip uses a small built-in extractor over the system
+    Compression framework (Foundation can write zips but not read them).
   - **Filter & bulk actions** — the Library's **Filter** control narrows the
     list by location (incl. *Unassigned*), genre, format, media condition,
     minimum rating, and **Discogs sync status** (*Synced* / *Not synced*); the

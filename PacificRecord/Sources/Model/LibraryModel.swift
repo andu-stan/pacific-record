@@ -159,6 +159,18 @@ final class LibraryModel {
         try await LibraryExporter.export(format, store: store, libraryFolder: libraryFolder)
     }
 
+    /// Restores from a backup, then refreshes everything on screen.
+    func importLibrary(
+        _ preview: LibraryImporter.Preview,
+        mode: LibraryImporter.Mode,
+        progress: @escaping @Sendable (Double) -> Void
+    ) async throws -> LibraryImporter.Summary {
+        let summary = try await LibraryImporter.apply(
+            preview, mode: mode, into: store, libraryFolder: libraryFolder, progress: progress)
+        refreshAll()
+        return summary
+    }
+
     /// Distinct genres/formats present in the library, for the filter sheet.
     func refreshFacets() {
         availableGenres = (try? store.genres()) ?? []
