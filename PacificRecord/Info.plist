@@ -22,6 +22,12 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<!-- Export compliance: the only cryptography here is HTTPS through the
+	     system stack and the keychain, both exempt. Declaring it means App
+	     Store Connect stops holding every TestFlight build for a manual
+	     answer to the encryption question. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>

@@ -25,6 +25,12 @@ targets:
       - path: PacificRecord/Resources
       # Compiled into both the app and the widget extension.
       - path: Shared
+      # Required-reason API declarations. `buildPhase` is spelled out because
+      # XcodeGen infers the phase from the file extension and doesn't know
+      # this one — without it the manifest ships nowhere and App Store Connect
+      # rejects the upload for a missing declaration.
+      - path: PacificRecord/PrivacyInfo.xcprivacy
+        buildPhase: resources
     dependencies:
       - package: VinylCore
         product: VinylCore
