@@ -2,14 +2,13 @@ import Foundation
 
 /// App-level build configuration.
 enum AppConfig {
-    /// iCloud Drive storage. Disabled until the app is signed with a paid Apple
-    /// Developer team — the iCloud entitlement requires a provisioned container,
-    /// which free provisioning can't create.
+    /// iCloud Drive storage: the SQLite file and `Covers/` live in the app's
+    /// ubiquity container, visible in Files and synced across devices.
     ///
-    /// To re-enable:
-    ///   1. Set this to `true`.
-    ///   2. Restore `CODE_SIGN_ENTITLEMENTS` in `project.yml`.
-    ///   3. Uncomment `NSUbiquitousContainers` in `PacificRecord/Info.plist`.
-    ///   4. Run `xcodegen generate`, then pick your Team in Signing & Capabilities.
-    static let iCloudEnabled = false
+    /// Requires all three of: this flag, the iCloud keys in
+    /// `PacificRecord.entitlements`, and `NSUbiquitousContainers` in
+    /// `Info.plist` — plus the iCloud capability on a paid team, since free
+    /// provisioning can't create a container. Turning this off falls back to
+    /// local storage without losing anything.
+    static let iCloudEnabled = true
 }

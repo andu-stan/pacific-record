@@ -64,7 +64,6 @@
 	<string>Pacific Record uses the camera to scan record barcodes.</string>
 	<key>LSSupportsOpeningDocumentsInPlace</key>
 	<true/>
-	<!-- iCloud container — re-enable with a paid Apple Developer team:
 	<key>NSUbiquitousContainers</key>
 	<dict>
 		<key>iCloud.ro.sofistic.pacificrecord</key>
@@ -77,6 +76,5 @@
 			<string>Any</string>
 		</dict>
 	</dict>
-	-->
 </dict>
 </plist>

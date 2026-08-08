@@ -2,15 +2,15 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- Shared container for the widgets. Required for them to show anything. -->
+	<!-- Shared container for the widgets. -->
 	<key>com.apple.security.application-groups</key>
 	<array>
 		<string>group.ro.sofistic.pacificrecord</string>
 	</array>
 
-	<!-- iCloud Drive. Add these back alongside AppConfig.iCloudEnabled = true
-	     and the NSUbiquitousContainers block in Info.plist:
-
+	<!-- iCloud Drive: the library folder lives in this container, visible in
+	     Files. Paired with AppConfig.iCloudEnabled and NSUbiquitousContainers
+	     in Info.plist. -->
 	<key>com.apple.developer.icloud-container-identifiers</key>
 	<array>
 		<string>iCloud.ro.sofistic.pacificrecord</string>
@@ -23,6 +23,5 @@
 	<array>
 		<string>iCloud.ro.sofistic.pacificrecord</string>
 	</array>
-	-->
 </dict>
 </plist>
