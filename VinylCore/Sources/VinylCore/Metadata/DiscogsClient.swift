@@ -101,6 +101,28 @@ public struct DiscogsClient: MetadataProvider {
         return (money, detail.numForSale ?? 0)
     }
 
+    // MARK: - Pressing detail
+
+    /// The facts that settle which of several near-identical entries you're
+    /// holding: the full release date, the matrix/runout etchings, the pressing
+    /// plant, the release notes, and how many copies are for sale. One request,
+    /// so callers should fetch it only when the user asks for a given release.
+    /// Works unauthenticated (public read).
+    public func pressingDetail(releaseID: Int, currency: String? = nil) async throws -> PressingDetail {
+        await limiter.waitForTurn()
+        var components = URLComponents(
+            url: baseURL.appendingPathComponent("releases/\(releaseID)"),
+            resolvingAgainstBaseURL: false
+        )
+        if let currency, DiscogsCurrency.isSupported(currency) {
+            components?.queryItems = [URLQueryItem(name: "curr_abbr", value: currency)]
+        }
+        guard let url = components?.url else { throw MetadataError.invalidURL }
+        let data = try await http.data(from: url, headers: headers)
+        let detail = try Self.decoder.decode(DiscogsReleaseDetail.self, from: data)
+        return Self.map(pressingDetail: detail, currency: currency)
+    }
+
     // MARK: - Images
 
     /// Every image for a release (front, back, labels…), primary first — for the
@@ -234,6 +256,9 @@ public struct DiscogsClient: MetadataProvider {
             genre: info.genres?.first,
             styles: info.styles ?? [],
             format: formatToken(from: descriptions),
+            formatDescriptions: descriptions,
+            formatText: freeTextNote(from: info.formats),
+            discCount: discCount(from: info.formats),
             speed: speedToken(from: descriptions),
             mediums: mediumNames(from: info.formats),
             labels: labels,
@@ -308,6 +333,9 @@ public struct DiscogsClient: MetadataProvider {
         let labels = (result.label ?? []).enumerated().map { index, name in
             LabelCredit(name: name, catalogNumber: index == 0 ? result.catno : nil)
         }
+        // Search results flatten the medium in with the descriptors; the medium
+        // is carried separately, so what's left is what distinguishes pressings.
+        let descriptions = (result.format ?? []).filter { ReleaseMedium.named($0) == nil }
         return MetadataMatch(
             id: "discogs:\(result.id)",
             source: .discogs,
@@ -319,12 +347,18 @@ public struct DiscogsClient: MetadataProvider {
             genre: result.genre?.first,
             styles: result.style ?? [],
             format: formatToken(from: result.format),
+            formatDescriptions: descriptions,
+            formatText: freeTextNote(from: result.formats),
+            discCount: result.formatQuantity ?? discCount(from: result.formats),
             speed: speedToken(from: result.format),
             mediums: mediumTokens(from: result.format),
             labels: labels,
             barcode: result.barcode?.first,
+            barcodes: result.barcode ?? [],
             discogsReleaseID: result.id,
+            masterID: result.masterId,
             coverImageURL: result.coverImage.flatMap { URL(string: $0) },
+            community: result.community.map { CommunityStats(have: $0.have ?? 0, want: $0.want ?? 0) },
             tracks: []
         )
     }
@@ -339,8 +373,9 @@ public struct DiscogsClient: MetadataProvider {
         }
         let descriptions = (detail.formats ?? []).flatMap { $0.descriptions ?? [] }
         let mediums = mediumNames(from: detail.formats)
-        let barcode = (detail.identifiers ?? [])
-            .first { ($0.type ?? "").lowercased() == "barcode" }?.value
+        let barcodes = (detail.identifiers ?? [])
+            .filter { ($0.type ?? "").lowercased() == "barcode" }
+            .compactMap(\.value)
 
         return MetadataMatch(
             id: "discogs:\(detail.id)",
@@ -353,17 +388,47 @@ public struct DiscogsClient: MetadataProvider {
             genre: detail.genres?.first ?? fallback.genre,
             styles: detail.styles ?? fallback.styles,
             format: formatToken(from: descriptions) ?? fallback.format,
+            formatDescriptions: descriptions.isEmpty ? fallback.formatDescriptions : descriptions,
+            formatText: freeTextNote(from: detail.formats) ?? fallback.formatText,
+            discCount: discCount(from: detail.formats) ?? fallback.discCount,
             speed: speedToken(from: descriptions) ?? fallback.speed,
             mediums: mediums.isEmpty ? fallback.mediums : mediums,
             labels: labels.isEmpty ? fallback.labels : labels,
-            barcode: barcode ?? fallback.barcode,
+            barcode: barcodes.first ?? fallback.barcode,
+            barcodes: barcodes.isEmpty ? fallback.barcodes : barcodes,
             discogsReleaseID: detail.id,
+            masterID: detail.masterId ?? fallback.masterID,
             musicbrainzMBID: fallback.musicbrainzMBID,
             coverImageURL: primaryImageURL(detail.images) ?? fallback.coverImageURL,
+            community: detail.community.map { CommunityStats(have: $0.have ?? 0, want: $0.want ?? 0) }
+                ?? fallback.community,
             tracks: (detail.tracklist ?? []).compactMap { track in
                 guard let title = track.title, !title.isEmpty else { return nil }
                 return TrackInfo(position: track.position, title: title, durationSeconds: parseDuration(track.duration))
             }
+        )
+    }
+
+    static func map(pressingDetail detail: DiscogsReleaseDetail, currency: String?) -> PressingDetail {
+        let identifiers = (detail.identifiers ?? []).compactMap { raw -> ReleaseIdentifier? in
+            guard let value = trimmed(raw.value) else { return nil }
+            return ReleaseIdentifier(type: trimmed(raw.type) ?? "Identifier", value: value, note: trimmed(raw.description))
+        }
+        let credits = (detail.companies ?? []).compactMap { company -> CompanyCredit? in
+            guard let name = trimmed(company.name), let role = trimmed(company.entityTypeName) else { return nil }
+            return CompanyCredit(role: role, name: name)
+        }
+        // Discogs' `released` is often just the year, which the row already
+        // shows — only worth surfacing when it carries a month or day.
+        let released = trimmed(detail.released)
+        return PressingDetail(
+            released: (released?.count ?? 0) > 4 ? released : nil,
+            identifiers: identifiers,
+            credits: credits,
+            notes: trimmed(detail.notes),
+            numForSale: detail.numForSale ?? 0,
+            lowestPrice: detail.lowestPrice.map { Money(amount: $0, currency: currency ?? "USD") },
+            imageCount: detail.images?.count ?? 0
         )
     }
 
@@ -409,6 +474,30 @@ public struct DiscogsClient: MetadataProvider {
             names.append(name)
         }
         return names
+    }
+
+    /// Trimmed, or nil when there was nothing but whitespace — Discogs sends
+    /// plenty of empty strings.
+    static func trimmed(_ value: String?) -> String? {
+        guard let value else { return nil }
+        let clean = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return clean.isEmpty ? nil : clean
+    }
+
+    /// The free-text format note Discogs allows alongside the descriptors —
+    /// "Blue Translucent", "Club Edition", "Half-Speed Mastered". Often the only
+    /// thing that separates two entries.
+    static func freeTextNote(from formats: [DiscogsFormat]?) -> String? {
+        (formats ?? []).compactMap(\.text)
+            .first { !$0.trimmingCharacters(in: .whitespaces).isEmpty }?
+            .trimmingCharacters(in: .whitespaces)
+    }
+
+    /// How many discs the release holds. Discogs counts per format entry, so a
+    /// 2×LP + bonus 7" reports the largest rather than the sum — which is what
+    /// "2×LP" in a candidate row should say.
+    static func discCount(from formats: [DiscogsFormat]?) -> Int? {
+        (formats ?? []).compactMap { $0.qty.flatMap(Int.init) }.max()
     }
 
     /// Search results flatten the medium in with the format descriptions
@@ -565,6 +654,8 @@ struct DiscogsSearchResult: Decodable {
     let year: String?
     let country: String?
     let format: [String]?
+    let formats: [DiscogsFormat]?
+    let formatQuantity: Int?
     let label: [String]?
     let genre: [String]?
     let style: [String]?
@@ -572,6 +663,18 @@ struct DiscogsSearchResult: Decodable {
     let barcode: [String]?
     let thumb: String?
     let coverImage: String?
+    let masterId: Int?
+    let community: DiscogsCommunity?
+}
+
+struct DiscogsCommunity: Decodable {
+    let have: Int?
+    let want: Int?
+}
+
+struct DiscogsCompany: Decodable {
+    let name: String?
+    let entityTypeName: String?
 }
 
 struct DiscogsReleaseDetail: Decodable {
@@ -589,6 +692,11 @@ struct DiscogsReleaseDetail: Decodable {
     let tracklist: [DiscogsTrack]?
     let lowestPrice: Double?
     let numForSale: Int?
+    let released: String?
+    let notes: String?
+    let companies: [DiscogsCompany]?
+    let masterId: Int?
+    let community: DiscogsCommunity?
 }
 
 struct DiscogsPriceSuggestion: Decodable {
@@ -615,6 +723,7 @@ struct DiscogsFormat: Decodable {
 struct DiscogsIdentifier: Decodable {
     let type: String?
     let value: String?
+    let description: String?
 }
 
 struct DiscogsImage: Decodable {

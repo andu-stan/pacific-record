@@ -89,6 +89,17 @@ To enable it once you have a **paid Apple Developer** team:
     token from Settings) with MusicBrainz as fallback; the chosen pressing is
     enriched, its cover downloaded to the library folder, and the form is
     prefilled for you to add condition/rating before saving.
+  - **Telling pressings apart** — a popular LP comes back from Discogs as a
+    wall of near-identical entries, so each candidate carries what actually
+    separates them: the full format descriptors ("2×LP, Album, Reissue, 180
+    Gram, Gatefold" rather than just "LP"), how many people own that pressing,
+    and — after a scan — a badge on the candidates that really carry the code
+    versus the loose matches beside them. Barcode results lead with the
+    most-owned pressing; text results keep Discogs' relevance order. Each row
+    expands to **pressing details** on request (one extra request, fetched only
+    when tapped): the full release date, the **matrix/runout etchings**,
+    pressing plant and mastering credits, release notes, copies for sale, and
+    links to the release and to all versions of the master.
   - **Search by medium** — Settings › Metadata › **Media** picks which physical
     media searches return (Vinyl, CD, Cassette, SACD, 8-Track, reel-to-reel…),
     defaulting to vinyl only, so a reissue search isn't buried under CD

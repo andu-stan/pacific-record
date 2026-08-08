@@ -111,6 +111,7 @@ public struct MusicBrainzClient: MetadataProvider {
             country: release.country,
             styles: [],
             format: (release.media ?? []).compactMap(\.format).first,
+            discCount: (release.media ?? []).isEmpty ? nil : (release.media ?? []).count,
             // MusicBrainz qualifies the medium (`12" Vinyl`); `ReleaseMedium`
             // reads through that, so pass the names along as they come.
             mediums: (release.media ?? []).compactMap(\.format),

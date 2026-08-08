@@ -3,22 +3,96 @@
   "title": "Kind Of Blue",
   "year": 1959,
   "country": "US",
-  "genres": ["Jazz"],
-  "styles": ["Modal", "Hard Bop"],
-  "artists": [{ "name": "Miles Davis" }],
-  "labels": [{ "name": "Columbia", "catno": "CS 8163" }],
-  "formats": [
-    { "name": "Vinyl", "qty": "1", "descriptions": ["LP", "Album", "45 RPM"] }
+  "genres": [
+    "Jazz"
   ],
-  "identifiers": [{ "type": "Barcode", "value": "888880000001" }],
+  "styles": [
+    "Modal",
+    "Hard Bop"
+  ],
+  "artists": [
+    {
+      "name": "Miles Davis"
+    }
+  ],
+  "labels": [
+    {
+      "name": "Columbia",
+      "catno": "CS 8163"
+    }
+  ],
+  "formats": [
+    {
+      "name": "Vinyl",
+      "qty": "1",
+      "descriptions": [
+        "LP",
+        "Album",
+        "45 RPM"
+      ]
+    }
+  ],
+  "identifiers": [
+    {
+      "type": "Barcode",
+      "value": "888880000001"
+    },
+    {
+      "type": "Matrix / Runout",
+      "value": "XSM 47324-1A",
+      "description": "Side A"
+    },
+    {
+      "type": "Matrix / Runout",
+      "value": "XSM 47325-1B",
+      "description": "Side B"
+    },
+    {
+      "type": "Rights Society",
+      "value": "BIEM/STEMRA"
+    }
+  ],
   "lowest_price": 24.99,
   "num_for_sale": 12,
   "images": [
-    { "type": "secondary", "uri": "https://img.discogs.com/back.jpg", "uri150": "https://img.discogs.com/back150.jpg" },
-    { "type": "primary", "uri": "https://img.discogs.com/front-hires.jpg", "uri150": "https://img.discogs.com/front150.jpg" }
+    {
+      "type": "secondary",
+      "uri": "https://img.discogs.com/back.jpg",
+      "uri150": "https://img.discogs.com/back150.jpg"
+    },
+    {
+      "type": "primary",
+      "uri": "https://img.discogs.com/front-hires.jpg",
+      "uri150": "https://img.discogs.com/front150.jpg"
+    }
   ],
   "tracklist": [
-    { "position": "A1", "title": "So What", "duration": "9:22" },
-    { "position": "A2", "title": "Freddie Freeloader", "duration": "9:46" }
-  ]
+    {
+      "position": "A1",
+      "title": "So What",
+      "duration": "9:22"
+    },
+    {
+      "position": "A2",
+      "title": "Freddie Freeloader",
+      "duration": "9:46"
+    }
+  ],
+  "master_id": 8542,
+  "released": "1959-08-17",
+  "notes": "Reissue of the 1959 Columbia album. Pressed on 180 gram vinyl.",
+  "companies": [
+    {
+      "name": "Columbia Records Pressing Plant, Pitman",
+      "entity_type_name": "Pressed By"
+    },
+    {
+      "name": "Sterling Sound",
+      "entity_type_name": "Mastered At"
+    }
+  ],
+  "community": {
+    "have": 5231,
+    "want": 812
+  }
 }

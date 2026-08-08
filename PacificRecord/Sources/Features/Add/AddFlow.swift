@@ -312,8 +312,7 @@ struct MatchView: View {
                         .padding(.bottom, 4)
                 }
                 ForEach(model.matches) { match in
-                    Button { model.choose(match) } label: { CandidateRow(match: match) }
-                        .buttonStyle(.plain)
+                    CandidateRow(model: model, match: match)
                 }
                 Button { model.goManual() } label: {
                     Text("None of these — enter manually")
@@ -334,8 +333,7 @@ struct MatchView: View {
             Image(systemName: "barcode").font(.system(size: 17)).foregroundStyle(Palette.badgeAmberText)
             VStack(alignment: .leading, spacing: 1) {
                 Text(code).font(.system(size: 14, weight: .semibold)).foregroundStyle(Palette.badgeAmberText)
-                Text(model.matches.count == 1 ? "1 pressing matches this barcode"
-                                              : "\(model.matches.count) pressings match this barcode")
+                Text(bannerSubtitle(code))
                     .font(.prSmall).foregroundStyle(Palette.secondary)
             }
             Spacer()
@@ -345,31 +343,126 @@ struct MatchView: View {
         .overlay(RoundedRectangle(cornerRadius: Metrics.cardRadius).strokeBorder(Palette.accent.opacity(0.3)))
         .padding(.bottom, 14)
     }
+
+    /// Discogs returns loose matches alongside the pressings that really carry
+    /// the code, so say how many are exact — that alone often narrows a wall of
+    /// look-alike entries to one.
+    private func bannerSubtitle(_ code: String) -> String {
+        let total = model.matches.count
+        let exact = model.matches.filter { $0.carries(barcode: code) }.count
+        if exact > 0 && exact < total {
+            return "\(total) pressings found · \(exact) carry this exact code"
+        }
+        return total == 1 ? "1 pressing matches this barcode"
+                          : "\(total) pressings match this barcode"
+    }
 }
 
+/// One candidate pressing. Popular LPs come back from Discogs as a wall of
+/// near-identical entries, so the row leads with what actually separates them —
+/// the full format descriptors and how many people own this pressing — and can
+/// expand to the matrix/runout and pressing plant on request.
 struct CandidateRow: View {
+    let model: AddFlowModel
     let match: MetadataMatch
+
+    private var detailState: AddFlowModel.DetailState { model.detailState(for: match) }
+
+    private var isExpanded: Bool {
+        switch detailState {
+        case .unavailable, .collapsed: return false
+        case .loading, .loaded, .failed: return true
+        }
+    }
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 12) {
-                RemoteCoverView(url: match.coverImageURL, seed: match.title)
-                    .frame(width: 56, height: 56)
-                    .shadow(color: .black.opacity(0.5), radius: 4, y: 2)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(titleLine)
-                        .font(.prBodyEmphasis).foregroundStyle(Palette.label).lineLimit(1)
-                    Text(detailLine)
-                        .font(.prSmall).foregroundStyle(Palette.secondary).lineLimit(1)
-                }
-                Spacer(minLength: 8)
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(Palette.quaternary)
+            Button { model.choose(match) } label: { summary }
+                .buttonStyle(.plain)
+
+            if detailState != .unavailable {
+                Button { model.toggleDetails(for: match) } label: { detailsToggle }
+                    .buttonStyle(.plain)
             }
-            .padding(.vertical, 12)
+
+            switch detailState {
+            case .loading:
+                HStack(spacing: 8) {
+                    ProgressView().controlSize(.small)
+                    Text("Reading pressing details…").font(.prSmall).foregroundStyle(Palette.tertiary)
+                    Spacer()
+                }
+                .padding(.bottom, 12)
+            case let .loaded(detail):
+                DetailPanel(match: match, detail: detail)
+            case let .failed(message):
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(message).font(.prSmall).foregroundStyle(Palette.secondary)
+                    Button("Try again") { model.retryDetail(for: match) }
+                        .font(.prFootnote).foregroundStyle(Palette.tint)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.bottom, 12)
+            case .unavailable, .collapsed:
+                EmptyView()
+            }
+
             HRule()
         }
+    }
+
+    private var summary: some View {
+        HStack(spacing: 12) {
+            RemoteCoverView(url: match.coverImageURL, seed: match.title)
+                .frame(width: 56, height: 56)
+                .shadow(color: .black.opacity(0.5), radius: 4, y: 2)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(titleLine)
+                    .font(.prBodyEmphasis).foregroundStyle(Palette.label).lineLimit(1)
+                Text(detailLine)
+                    .font(.prSmall).foregroundStyle(Palette.secondary).lineLimit(2)
+                if matchesScannedBarcode || (match.community?.have ?? 0) > 0 {
+                    HStack(spacing: 6) {
+                        if matchesScannedBarcode {
+                            RowBadge(text: "Scanned code", fill: Palette.badgeAmberFill, foreground: Palette.badgeAmberText)
+                        }
+                        if let have = match.community?.have, have > 0 {
+                            RowBadge(text: "\(have.formatted()) have",
+                                  fill: Palette.badgeNeutralFill, foreground: Palette.secondary)
+                        }
+                        Spacer(minLength: 0)
+                    }
+                    .padding(.top, 1)
+                }
+            }
+            Spacer(minLength: 8)
+            Image(systemName: "chevron.right")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(Palette.quaternary)
+        }
+        .padding(.vertical, 12)
+        .contentShape(Rectangle())
+    }
+
+    private var detailsToggle: some View {
+        HStack(spacing: 6) {
+            Text(isExpanded ? "Hide pressing details" : "Pressing details")
+            Image(systemName: "chevron.down")
+                .font(.system(size: 10, weight: .semibold))
+                .rotationEffect(.degrees(isExpanded ? 180 : 0))
+            Spacer()
+        }
+        .font(.prFootnote)
+        .foregroundStyle(Palette.tint)
+        .padding(.bottom, 12)
+        .contentShape(Rectangle())
+    }
+
+    /// Whether this candidate genuinely carries the code that was scanned —
+    /// Discogs returns loose matches alongside the exact one.
+    private var matchesScannedBarcode: Bool {
+        guard let scanned = model.lastBarcode else { return false }
+        return match.carries(barcode: scanned)
     }
 
     private var titleLine: String {
@@ -379,10 +472,127 @@ struct CandidateRow: View {
     }
 
     private var detailLine: String {
-        [match.year.map(String.init), match.country, match.format]
+        [match.year.map(String.init), match.country, match.formatSummary]
             .compactMap { $0 }
             .joined(separator: " · ")
     }
+}
+
+/// A small capsule of supporting text on a candidate row.
+private struct RowBadge: View {
+    let text: String
+    let fill: Color
+    let foreground: Color
+
+    var body: some View {
+        Text(text)
+            .font(.prBadge)
+            .foregroundStyle(foreground)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 2)
+            .background(fill, in: Capsule())
+    }
+}
+
+/// The on-demand half: what a single extra Discogs request buys you.
+private struct DetailPanel: View {
+    let match: MetadataMatch
+    let detail: PressingDetail
+
+    /// Matrix and runout etchings first — those are read off the record itself,
+    /// so they're what actually settles which pressing you're holding. A
+    /// partition rather than a sort, to keep Discogs' order within each half.
+    private var identifiers: [ReleaseIdentifier] {
+        detail.identifiers.filter(isRunout) + detail.identifiers.filter { !isRunout($0) }
+    }
+
+    private func isRunout(_ identifier: ReleaseIdentifier) -> Bool {
+        let type = identifier.type.lowercased()
+        return type.contains("matrix") || type.contains("runout")
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            if detail.isEmpty {
+                Text("Discogs has no extra pressing detail for this entry.")
+                    .font(.prSmall).foregroundStyle(Palette.tertiary)
+            }
+            if let released = detail.released {
+                field("Released", values: [released])
+            }
+            ForEach(groupedIdentifiers) { group in
+                field(group.type, values: group.values)
+            }
+            if !detail.credits.isEmpty {
+                field("Credits", values: detail.credits.prefix(4).map { "\($0.role) — \($0.name)" })
+            }
+            if let notes = detail.notes {
+                field("Notes", values: [notes], lineLimit: 4)
+            }
+            if detail.numForSale > 0 {
+                Text(marketLine)
+                    .font(.prSmall).foregroundStyle(Palette.secondary)
+            }
+            HStack(spacing: 14) {
+                if let url = match.webURL {
+                    Link("View on Discogs", destination: url)
+                }
+                if let url = match.allVersionsURL {
+                    Link("All versions", destination: url)
+                }
+            }
+            .font(.prFootnote)
+            .foregroundStyle(Palette.tint)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(Palette.surface2, in: RoundedRectangle(cornerRadius: Metrics.cardRadius, style: .continuous))
+        .padding(.bottom, 12)
+    }
+
+    /// One block per identifier type, so four runout etchings don't repeat the
+    /// heading four times. Capped — some releases list dozens.
+    private var groupedIdentifiers: [IdentifierGroup] {
+        var order: [String] = []
+        var byType: [String: [String]] = [:]
+        for identifier in identifiers.prefix(12) {
+            if byType[identifier.type] == nil { order.append(identifier.type) }
+            let note = identifier.note.map { " (\($0))" } ?? ""
+            byType[identifier.type, default: []].append(identifier.value + note)
+        }
+        return order.prefix(4).map { IdentifierGroup(type: $0, values: byType[$0] ?? []) }
+    }
+
+    private var marketLine: String {
+        let copies = detail.numForSale == 1 ? "1 copy for sale" : "\(detail.numForSale.formatted()) copies for sale"
+        guard let price = detail.lowestPrice else { return copies }
+        return "\(copies) from \(price.amount.formatted(.currency(code: price.currency)))"
+    }
+
+    private func field(_ label: String, values: [String], lineLimit: Int = 2) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(label.uppercased())
+                .font(.prBadge)
+                .tracking(Metrics.overlineTracking)
+                .foregroundStyle(Palette.tertiary)
+            ForEach(values.indices, id: \.self) { index in
+                Text(values[index])
+                    .font(.prSmall)
+                    .foregroundStyle(Palette.label)
+                    .lineLimit(lineLimit)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// Identifiers of one kind ("Matrix / Runout") gathered under a single heading.
+private struct IdentifierGroup: Identifiable {
+    let type: String
+    let values: [String]
+
+    var id: String { type }
 }
 
 // MARK: - Cover picker
@@ -449,8 +659,7 @@ struct TextSearchView: View {
                         .frame(maxWidth: .infinity).padding(.top, 40)
                 } else {
                     ForEach(model.matches) { match in
-                        Button { model.choose(match) } label: { CandidateRow(match: match) }
-                            .buttonStyle(.plain)
+                        CandidateRow(model: model, match: match)
                     }
                 }
             }

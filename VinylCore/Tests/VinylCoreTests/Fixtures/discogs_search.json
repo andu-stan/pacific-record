@@ -5,14 +5,47 @@
       "title": "Miles Davis - Kind Of Blue",
       "year": "1959",
       "country": "US",
-      "format": ["Vinyl", "LP", "Album", "Reissue"],
-      "label": ["Columbia", "Columbia"],
+      "format": [
+        "Vinyl",
+        "LP",
+        "Album",
+        "Reissue"
+      ],
+      "label": [
+        "Columbia",
+        "Columbia"
+      ],
       "catno": "CS 8163",
-      "barcode": ["888880000001"],
-      "genre": ["Jazz"],
-      "style": ["Modal", "Hard Bop"],
+      "barcode": [
+        "888880000001"
+      ],
+      "genre": [
+        "Jazz"
+      ],
+      "style": [
+        "Modal",
+        "Hard Bop"
+      ],
       "thumb": "https://img.discogs.com/thumb.jpg",
-      "cover_image": "https://img.discogs.com/cover.jpg"
+      "cover_image": "https://img.discogs.com/cover.jpg",
+      "formats": [
+        {
+          "name": "Vinyl",
+          "qty": "1",
+          "descriptions": [
+            "LP",
+            "Album",
+            "Reissue"
+          ],
+          "text": "180 Gram"
+        }
+      ],
+      "format_quantity": 1,
+      "master_id": 8542,
+      "community": {
+        "have": 5231,
+        "want": 812
+      }
     }
   ]
 }

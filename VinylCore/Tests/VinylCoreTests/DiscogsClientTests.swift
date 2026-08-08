@@ -27,6 +27,56 @@ final class DiscogsClientTests: XCTestCase {
         XCTAssertEqual(match.mediums, ["Vinyl"], "the medium is picked out of the flat format list")
     }
 
+    /// Popular LPs come back as a wall of near-identical entries, so a search
+    /// result has to carry everything that tells them apart.
+    func testSearchResultCarriesPressingDiscriminators() async throws {
+        let search = try Fixture.data("discogs_search")
+        let match = try XCTUnwrap(try await client { _ in search }.searchByBarcode("888880000001").first)
+
+        XCTAssertEqual(match.formatDescriptions, ["LP", "Album", "Reissue"],
+                       "the medium is carried separately; what's left distinguishes pressings")
+        XCTAssertEqual(match.formatText, "180 Gram")
+        XCTAssertEqual(match.discCount, 1)
+        XCTAssertEqual(match.formatSummary, "LP, Album, Reissue, 180 Gram")
+        XCTAssertEqual(match.community?.have, 5231)
+        XCTAssertEqual(match.community?.want, 812)
+        XCTAssertEqual(match.masterID, 8542)
+        XCTAssertEqual(match.barcodes, ["888880000001"])
+        XCTAssertTrue(match.carries(barcode: "8 888 8000 0001"), "spacing on the sleeve is not significant")
+        XCTAssertFalse(match.carries(barcode: "888880000002"))
+        XCTAssertEqual(match.webURL?.absoluteString, "https://www.discogs.com/release/249504")
+        XCTAssertEqual(match.allVersionsURL?.absoluteString, "https://www.discogs.com/master/8542")
+    }
+
+    func testPressingDetailReadsRunoutPlantAndDate() async throws {
+        let release = try Fixture.data("discogs_release")
+        let detail = try await client { _ in release }.pressingDetail(releaseID: 249504, currency: "EUR")
+
+        XCTAssertEqual(detail.released, "1959-08-17", "a bare year is dropped — the row already shows it")
+        XCTAssertEqual(detail.identifiers.filter { $0.type == "Matrix / Runout" }.map(\.value),
+                       ["XSM 47324-1A", "XSM 47325-1B"])
+        XCTAssertEqual(detail.identifiers.first { $0.value == "XSM 47324-1A" }?.note, "Side A")
+        XCTAssertEqual(detail.credits.map(\.role), ["Pressed By", "Mastered At"])
+        XCTAssertEqual(detail.credits.first?.name, "Columbia Records Pressing Plant, Pitman")
+        XCTAssertEqual(detail.numForSale, 12)
+        XCTAssertEqual(detail.lowestPrice?.amount, 24.99)
+        XCTAssertEqual(detail.lowestPrice?.currency, "EUR")
+        XCTAssertEqual(detail.imageCount, 2)
+        XCTAssertNotNil(detail.notes)
+        XCTAssertFalse(detail.isEmpty)
+    }
+
+    func testEnrichKeepsSearchDiscriminatorsAndAddsMore() async throws {
+        let search = try Fixture.data("discogs_search")
+        let release = try Fixture.data("discogs_release")
+        let discogs = client { url in url.path.contains("/releases/") ? release : search }
+
+        let enriched = try await discogs.enrich(try await discogs.searchByBarcode("888880000001")[0])
+        XCTAssertEqual(enriched.masterID, 8542)
+        XCTAssertEqual(enriched.community?.have, 5231)
+        XCTAssertEqual(enriched.barcodes, ["888880000001"], "only barcode identifiers, not the runout")
+    }
+
     func testTextSearchNarrowsToASingleSelectedMedium() async throws {
         let search = try Fixture.data("discogs_search")
         let seen = RecordedURL()

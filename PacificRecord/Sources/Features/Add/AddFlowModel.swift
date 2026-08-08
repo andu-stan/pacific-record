@@ -41,29 +41,57 @@ final class AddFlowModel {
     /// it picks up the current token and media selection.
     let provider: any MetadataProvider
 
+    /// The same Discogs client the provider uses (a struct, but its rate
+    /// limiter is shared), for the pressing-detail reads that sit outside the
+    /// `MetadataProvider` protocol. Present even without a token, since the
+    /// release endpoint is a public read.
+    private let discogs: DiscogsClient
     private let library: LibraryModel
     private let onFinishFlow: () -> Void
     private var lastSearch: (@Sendable () async throws -> [MetadataMatch])?
-    private var lastPush = true
-    private var lastKeepAllIfEmpty = false
+    private var lastKind: SearchKind = .text
 
     init(library: LibraryModel, onFinish: @escaping () -> Void) {
         self.library = library
         self.onFinishFlow = onFinish
-        self.provider = AddFlowModel.makeProvider()
+        let built = AddFlowModel.makeProvider()
+        self.provider = built.provider
+        self.discogs = built.discogs
     }
 
     /// Discogs (if a token is configured) with MusicBrainz as fallback; just
-    /// MusicBrainz otherwise.
-    private static func makeProvider() -> any MetadataProvider {
+    /// MusicBrainz otherwise. The Discogs client comes back either way so
+    /// pressing details still work on a token-less install.
+    private static func makeProvider() -> (provider: any MetadataProvider, discogs: DiscogsClient) {
         let token = UserDefaults.standard.string(forKey: "discogsToken") ?? ""
-        let musicBrainz = MusicBrainzClient()
-        guard !token.isEmpty else { return musicBrainz }
         let discogs = DiscogsClient(token: token, mediums: SearchMediums.current)
-        return CompositeMetadataProvider(providers: [discogs, musicBrainz])
+        let musicBrainz = MusicBrainzClient()
+        guard !token.isEmpty else { return (musicBrainz, discogs) }
+        return (CompositeMetadataProvider(providers: [discogs, musicBrainz]), discogs)
     }
 
     // MARK: Searching
+
+    /// Barcode and text lookups want different handling of the results, so the
+    /// two paths are named rather than passed as a pile of flags.
+    private enum SearchKind {
+        case barcode
+        case text
+
+        /// Barcode results go to the Match screen ("pick the pressing"); text
+        /// results appear inline on the search screen.
+        var pushesMatchScreen: Bool { self == .barcode }
+
+        /// You scanned something physical, so if the medium filter would empty
+        /// the results, show them anyway rather than claiming no match.
+        var ignoresMediumFilterWhenEmpty: Bool { self == .barcode }
+
+        /// Every barcode result is the same record in a different pressing, so
+        /// the one most people own is almost certainly the one in your hands.
+        /// Text results keep Discogs' relevance order — re-ranking those would
+        /// push a famous album above a closer title match.
+        var ranksByPopularity: Bool { self == .barcode }
+    }
 
     func handleBarcode(_ code: String) {
         let trimmed = code.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -72,10 +100,7 @@ final class AddFlowModel {
         lastBarcode = trimmed
         Haptics.impact()
         let provider = provider
-        // Barcode results push to the Match screen ("pick the pressing"). You
-        // scanned something physical, so if the medium filter would empty the
-        // results we show them anyway rather than claiming nothing was found.
-        run(push: true, keepAllIfEmpty: true) { try await provider.searchByBarcode(trimmed) }
+        run(.barcode) { try await provider.searchByBarcode(trimmed) }
     }
 
     func runTextSearch(_ query: String) {
@@ -83,46 +108,111 @@ final class AddFlowModel {
         guard !trimmed.isEmpty, phase != .searching else { return }
         lastBarcode = nil
         let provider = provider
-        // Text results appear inline on the search screen.
-        run(push: false) { try await provider.searchByText(trimmed) }
+        run(.text) { try await provider.searchByText(trimmed) }
     }
 
     func retry() {
-        if let search = lastSearch { run(push: lastPush, keepAllIfEmpty: lastKeepAllIfEmpty, search) }
+        if let search = lastSearch { run(lastKind, search) }
     }
 
     func dismissAlert() {
         phase = .idle
     }
 
-    private func run(
-        push: Bool,
-        keepAllIfEmpty: Bool = false,
-        _ operation: @escaping @Sendable () async throws -> [MetadataMatch]
-    ) {
+    private func run(_ kind: SearchKind, _ operation: @escaping @Sendable () async throws -> [MetadataMatch]) {
         lastSearch = operation
-        lastPush = push
-        lastKeepAllIfEmpty = keepAllIfEmpty
+        lastKind = kind
         phase = .searching
+        expandedDetails = []
         Task {
             do {
                 let found = try await operation()
                 let filter = SearchMediums.current
                 var results = filter.apply(to: found)
-                if results.isEmpty && keepAllIfEmpty { results = found }
+                if results.isEmpty && kind.ignoresMediumFilterWhenEmpty { results = found }
                 lastSearchWasFilteredOut = results.isEmpty && !found.isEmpty
                 if results.isEmpty {
                     phase = .empty
                     Haptics.warning()
                 } else {
-                    matches = results
+                    matches = kind.ranksByPopularity ? Self.rankedByPopularity(results) : results
                     phase = .idle
-                    if push && !path.contains(.matches) { path.append(.matches) }
+                    if kind.pushesMatchScreen && !path.contains(.matches) { path.append(.matches) }
                 }
             } catch {
                 phase = .failed(Self.message(for: error))
                 Haptics.warning()
             }
+        }
+    }
+
+    /// Most-owned pressing first, keeping the source's order among candidates
+    /// with the same (or no) count so the sort is stable.
+    private static func rankedByPopularity(_ matches: [MetadataMatch]) -> [MetadataMatch] {
+        matches.enumerated().sorted { lhs, rhs in
+            let left = lhs.element.community?.have ?? -1
+            let right = rhs.element.community?.have ?? -1
+            if left != right { return left > right }
+            return lhs.offset < rhs.offset
+        }.map(\.element)
+    }
+
+    // MARK: Pressing detail
+
+    /// What a candidate row should show below itself. Details cost a
+    /// rate-limited request each, so they're fetched only when asked for and
+    /// kept for the rest of the flow.
+    enum DetailState: Equatable {
+        /// Not a Discogs release — nothing to expand.
+        case unavailable
+        case collapsed
+        case loading
+        case loaded(PressingDetail)
+        case failed(String)
+    }
+
+    private var expandedDetails: Set<Int> = []
+    private var details: [Int: PressingDetail] = [:]
+    private var detailFailures: [Int: String] = [:]
+    private var loadingDetails: Set<Int> = []
+
+    func detailState(for match: MetadataMatch) -> DetailState {
+        guard let id = match.discogsReleaseID else { return .unavailable }
+        guard expandedDetails.contains(id) else { return .collapsed }
+        if let detail = details[id] { return .loaded(detail) }
+        if let message = detailFailures[id] { return .failed(message) }
+        return .loading
+    }
+
+    func toggleDetails(for match: MetadataMatch) {
+        guard let id = match.discogsReleaseID else { return }
+        if expandedDetails.contains(id) {
+            expandedDetails.remove(id)
+            return
+        }
+        expandedDetails.insert(id)
+        loadDetail(id)
+    }
+
+    /// Re-runs a fetch that failed, without collapsing the row.
+    func retryDetail(for match: MetadataMatch) {
+        guard let id = match.discogsReleaseID else { return }
+        detailFailures[id] = nil
+        loadDetail(id)
+    }
+
+    private func loadDetail(_ id: Int) {
+        guard details[id] == nil, !loadingDetails.contains(id) else { return }
+        loadingDetails.insert(id)
+        let client = discogs
+        let currency = UserDefaults.standard.string(forKey: RecordValueService.currencyKey)
+        Task {
+            do {
+                details[id] = try await client.pressingDetail(releaseID: id, currency: currency)
+            } catch {
+                detailFailures[id] = Self.message(for: error)
+            }
+            loadingDetails.remove(id)
         }
     }
 
