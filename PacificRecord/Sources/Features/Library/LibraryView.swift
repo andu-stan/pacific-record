@@ -18,9 +18,11 @@ struct LibraryView: View {
     @State private var confirmBulkDelete = false
     @State private var searchOpen = false
     @FocusState private var searchFocused: Bool
+    /// Explicit path so a widget tap can push a record.
+    @State private var path: [String] = []
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             // The header sits outside the branch so Settings and Add stay
             // reachable when the library is empty — otherwise a fresh install
             // has no route to the Discogs token or to restoring a backup.
@@ -44,6 +46,12 @@ struct LibraryView: View {
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: String.self) { id in
                 RecordDetailScreen(recordID: id)
+            }
+            // Tapping "Record of the Day" opens that record.
+            .onOpenURL { url in
+                if let id = WidgetDeepLink.recordID(from: url), model.detail(id: id) != nil {
+                    path = [id]
+                }
             }
             .toolbar { keyboardToolbar }
             .tint(Palette.tint)

@@ -129,6 +129,16 @@ To enable it once you have a **paid Apple Developer** team:
     set a default); the add/edit form has a location picker that preselects the
     default and can create a new location inline; the detail screen shows it.
     Deleting a location unassigns its records rather than deleting them.
+  - **Widgets** — two home-screen widgets (small and medium): **Record of the
+    Day**, which surfaces a different record from the collection each day and
+    opens it when tapped, and **Library Stats** (records / artists / genres and
+    the estimated total). A widget can't reach the app's database, so the app
+    writes a small JSON snapshot plus downsampled covers into a shared App
+    Group container whenever the library changes; the widget only reads that.
+    The daily pick is derived from the date rather than stored, so a week of
+    timeline entries rotates without the app running.
+    Requires the **App Groups** capability on both targets
+    (`group.ro.sofistic.pacificrecord`).
   - **Export & share** — Settings › Storage › **Export library** produces
     either a **.zip** (database + every cover — a complete backup) or the
     **.sqlite** database on its own, and hands it to the standard iOS share

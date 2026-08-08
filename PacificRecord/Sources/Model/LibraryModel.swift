@@ -140,6 +140,34 @@ final class LibraryModel {
         artistCount = artists.count
         genreCount = genres.count
         totalValueByCurrency = totals
+        refreshWidgetsIfNeeded()
+    }
+
+    /// Signature of what the widgets show, so a snapshot is only rewritten when
+    /// something they display actually changed — `applyFilter` also runs on
+    /// every search keystroke.
+    @ObservationIgnored private var widgetSignature: Int = 0
+
+    private func refreshWidgetsIfNeeded() {
+        var hasher = Hasher()
+        hasher.combine(records.count)
+        hasher.combine(libraryName)
+        hasher.combine(artistCount)
+        hasher.combine(genreCount)
+        for record in records { hasher.combine(record.id) }
+        let signature = hasher.finalize()
+        guard signature != widgetSignature else { return }
+        widgetSignature = signature
+
+        WidgetSnapshotWriter.update(
+            records: records,
+            libraryName: displayName,
+            artistCount: artistCount,
+            genreCount: genreCount,
+            formattedValue: totalValueByCurrency.isEmpty ? nil : formattedTotalValue,
+            valuedCount: records.filter { $0.estimatedValue != nil }.count,
+            libraryFolder: libraryFolder
+        )
     }
 
     func detail(for release: Release) -> RecordDetail? {

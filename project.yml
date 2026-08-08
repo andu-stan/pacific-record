@@ -23,9 +23,12 @@ targets:
       # asset catalog (app icon, accent colour) must be listed here too.
       - path: PacificRecord/Sources
       - path: PacificRecord/Resources
+      # Compiled into both the app and the widget extension.
+      - path: Shared
     dependencies:
       - package: VinylCore
         product: VinylCore
+      - target: PacificRecordWidgets
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: ro.sofistic.pacificrecord
@@ -35,7 +38,29 @@ targets:
         TARGETED_DEVICE_FAMILY: "1"          # iPhone only
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: PacificRecord/Info.plist
-        # iCloud entitlements require a paid Apple Developer team. Re-enable with iCloud:
-        # CODE_SIGN_ENTITLEMENTS: PacificRecord/PacificRecord.entitlements
+        # App Groups (for the widgets) live here. The iCloud keys are commented
+        # out inside the file — see AppConfig.iCloudEnabled.
+        CODE_SIGN_ENTITLEMENTS: PacificRecord/PacificRecord.entitlements
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+
+  PacificRecordWidgets:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: PacificRecordWidgets
+      - path: Shared
+      # The bundled type families, so widgets match the app.
+      - path: PacificRecord/Resources/Fonts
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ro.sofistic.pacificrecord.widgets
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SWIFT_VERSION: "5.9"
+        TARGETED_DEVICE_FAMILY: "1"
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: PacificRecordWidgets/Info.plist
+        CODE_SIGN_ENTITLEMENTS: PacificRecordWidgets/PacificRecordWidgets.entitlements
+        SKIP_INSTALL: YES
