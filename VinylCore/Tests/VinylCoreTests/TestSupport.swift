@@ -16,6 +16,28 @@ struct StubHTTPClient: HTTPClient {
     }
 }
 
+/// Remembers the last URL a stub client was asked for, so tests can assert on
+/// the query a client built. Locked because the stub handler is `@Sendable`.
+final class RecordedURL: @unchecked Sendable {
+    private let lock = NSLock()
+    private var last: URL?
+
+    func record(_ url: URL) {
+        lock.lock()
+        defer { lock.unlock() }
+        last = url
+    }
+
+    /// The value of a query item on the most recent request, if it was sent.
+    func query(_ name: String) -> String? {
+        lock.lock()
+        defer { lock.unlock() }
+        guard let last else { return nil }
+        return URLComponents(url: last, resolvingAgainstBaseURL: false)?
+            .queryItems?.first { $0.name == name }?.value
+    }
+}
+
 enum Fixture {
     static func data(_ name: String) throws -> Data {
         let url = try XCTUnwrap(

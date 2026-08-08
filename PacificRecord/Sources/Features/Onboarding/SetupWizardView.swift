@@ -11,6 +11,7 @@ struct SetupWizardView: View {
     @Environment(AppModel.self) private var app
     @Environment(LibraryModel.self) private var library
     @AppStorage("discogsToken") private var token = ""
+    @AppStorage(SearchMediums.storageKey) private var searchMediumsRaw = MediumFilter.default.storageValue
 
     @State private var step: Step = .welcome
     @State private var choice: Choice?
@@ -145,6 +146,8 @@ struct SetupWizardView: View {
                 .font(.prSmall)
                 .foregroundStyle(Palette.tertiary)
                 .padding(.top, 10)
+
+            mediumChips
 
             if app.iCloudAvailable {
                 GroupedCard() {
@@ -346,6 +349,41 @@ struct SetupWizardView: View {
             )
         }
         .buttonStyle(.plain)
+    }
+
+    /// The three media almost every collection is made of. The full list — SACD,
+    /// reel-to-reel, 8-track — lives in Settings; this is just enough that a CD
+    /// collector isn't stuck with vinyl-only searches from day one.
+    private var mediumChips: some View {
+        let quick: [ReleaseMedium] = [.vinyl, .cd, .cassette]
+        let filter = MediumFilter(storageValue: searchMediumsRaw)
+        return VStack(alignment: .leading, spacing: 8) {
+            Text("I collect")
+                .font(.prCaption)
+                .tracking(Metrics.overlineTracking)
+                .textCase(.uppercase)
+                .foregroundStyle(Palette.tertiary)
+            HStack(spacing: 8) {
+                ForEach(quick) { medium in
+                    let isOn = filter.selected.contains(medium)
+                    Button {
+                        var selected = filter.selected
+                        if selected.contains(medium) { selected.remove(medium) } else { selected.insert(medium) }
+                        searchMediumsRaw = MediumFilter(selected: selected).storageValue
+                    } label: {
+                        Text(medium.displayName)
+                            .font(.prFootnote)
+                            .foregroundStyle(isOn ? Palette.onPrimary : Palette.secondary)
+                            .padding(.horizontal, 14)
+                            .frame(height: 34)
+                            .background(isOn ? Palette.accent : Palette.grouped, in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+                }
+                Spacer()
+            }
+        }
+        .padding(.top, 16)
     }
 
     private func fieldCard(label: String, placeholder: String, text: Binding<String>) -> some View {

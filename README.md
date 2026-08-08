@@ -89,6 +89,14 @@ To enable it once you have a **paid Apple Developer** team:
     token from Settings) with MusicBrainz as fallback; the chosen pressing is
     enriched, its cover downloaded to the library folder, and the form is
     prefilled for you to add condition/rating before saving.
+  - **Search by medium** — Settings › Metadata › **Media** picks which physical
+    media searches return (Vinyl, CD, Cassette, SACD, 8-Track, reel-to-reel…),
+    defaulting to vinyl only, so a reissue search isn't buried under CD
+    pressings. With one medium selected Discogs is asked for it directly
+    (`format=`); everything else is filtered on the way in. Releases whose
+    medium a source doesn't name are always shown, a barcode scan falls back to
+    every result rather than coming up empty, and collection imports aren't
+    filtered at all. Same filter applies to wishlist searches.
   - The library **starts empty** — no seeded sample data.
   - **iCloud Drive storage** — the SQLite file + `Covers/` folder live in the
     app's iCloud container (visible in Files, readable by other apps), resolved

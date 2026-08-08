@@ -64,6 +64,10 @@ public struct MetadataMatch: Sendable, Equatable, Identifiable {
     public var styles: [String]
     public var format: String?
     public var speed: String?
+    /// The physical media this release was issued on, as the source names them
+    /// ("Vinyl", "CD", "Cassette"…). Used to filter searches by medium; empty
+    /// when the source doesn't say.
+    public var mediums: [String]
     public var labels: [LabelCredit]
     public var barcode: String?
     public var discogsReleaseID: Int?
@@ -83,6 +87,7 @@ public struct MetadataMatch: Sendable, Equatable, Identifiable {
         styles: [String] = [],
         format: String? = nil,
         speed: String? = nil,
+        mediums: [String] = [],
         labels: [LabelCredit] = [],
         barcode: String? = nil,
         discogsReleaseID: Int? = nil,
@@ -101,6 +106,7 @@ public struct MetadataMatch: Sendable, Equatable, Identifiable {
         self.styles = styles
         self.format = format
         self.speed = speed
+        self.mediums = mediums
         self.labels = labels
         self.barcode = barcode
         self.discogsReleaseID = discogsReleaseID

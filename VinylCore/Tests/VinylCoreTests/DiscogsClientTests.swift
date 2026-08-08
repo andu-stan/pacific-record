@@ -24,6 +24,33 @@ final class DiscogsClientTests: XCTestCase {
         XCTAssertEqual(match.styles, ["Modal", "Hard Bop"])
         XCTAssertEqual(match.coverImageURL?.absoluteString, "https://img.discogs.com/cover.jpg")
         XCTAssertTrue(match.tracks.isEmpty, "search results carry no tracklist yet")
+        XCTAssertEqual(match.mediums, ["Vinyl"], "the medium is picked out of the flat format list")
+    }
+
+    func testTextSearchNarrowsToASingleSelectedMedium() async throws {
+        let search = try Fixture.data("discogs_search")
+        let seen = RecordedURL()
+        let discogs = DiscogsClient(
+            token: "test-token",
+            mediums: MediumFilter(selected: [.vinyl]),
+            http: StubHTTPClient { url in seen.record(url); return search },
+            limiter: RateLimiter(minInterval: 0))
+
+        _ = try await discogs.searchByText("kind of blue")
+        XCTAssertEqual(seen.query("format"), "Vinyl")
+
+        // A mixed selection can't be one `format` value, so we filter our side.
+        let mixed = DiscogsClient(
+            token: "test-token",
+            mediums: MediumFilter(selected: [.vinyl, .cassette]),
+            http: StubHTTPClient { url in seen.record(url); return search },
+            limiter: RateLimiter(minInterval: 0))
+        _ = try await mixed.searchByText("kind of blue")
+        XCTAssertNil(seen.query("format"))
+
+        // A barcode identifies one physical object — never narrow that.
+        _ = try await discogs.searchByBarcode("888880000001")
+        XCTAssertNil(seen.query("format"))
     }
 
     func testEnrichAddsTracklistSpeedAndHiResCover() async throws {

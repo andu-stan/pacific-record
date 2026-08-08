@@ -121,11 +121,13 @@ struct AddFlowContainer: View {
                 SearchingOverlay(barcode: model.lastBarcode)
             }
         }
-        .alert("No match found", isPresented: emptyAlert) {
+        .alert(model.lastSearchWasFilteredOut ? "Nothing on your media" : "No match found", isPresented: emptyAlert) {
             Button("Enter manually") { model.goManual() }
             Button(model.lastBarcode == nil ? "Try again" : "Scan again", role: .cancel) { model.dismissAlert() }
         } message: {
-            Text("We couldn't find a release. It may be a promo or a private pressing.")
+            Text(model.lastSearchWasFilteredOut
+                 ? "Releases were found, but none on the media you search for. Change that under Settings › Metadata › Media."
+                 : "We couldn't find a release. It may be a promo or a private pressing.")
         }
         .alert("Lookup failed", isPresented: failedAlert) {
             Button("Try again") { model.retry() }

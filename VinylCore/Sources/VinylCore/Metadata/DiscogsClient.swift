@@ -10,6 +10,7 @@ public struct DiscogsClient: MetadataProvider {
 
     private let token: String
     private let userAgent: String
+    private let mediums: MediumFilter
     private let http: HTTPClient
     private let limiter: RateLimiter
     private let baseURL = URL(string: "https://api.discogs.com")!
@@ -17,11 +18,13 @@ public struct DiscogsClient: MetadataProvider {
     public init(
         token: String,
         userAgent: String = "PacificRecord/1.0 +https://github.com/andu-stan/pacific-record",
+        mediums: MediumFilter = .all,
         http: HTTPClient = URLSessionHTTPClient(),
         limiter: RateLimiter = RateLimiter(minInterval: 1.1)
     ) {
         self.token = token
         self.userAgent = userAgent
+        self.mediums = mediums
         self.http = http
         self.limiter = limiter
     }
@@ -57,10 +60,18 @@ public struct DiscogsClient: MetadataProvider {
     }
 
     public func searchByText(_ query: String) async throws -> [MetadataMatch] {
-        try await search(queryItems: [
+        var items = [
             URLQueryItem(name: "q", value: query),
             URLQueryItem(name: "type", value: "release"),
-        ])
+        ]
+        // Narrow server-side when the user collects a single medium, so the one
+        // page we read isn't mostly CDs. Callers still filter what comes back —
+        // a barcode lookup deliberately doesn't narrow, and mixed selections
+        // can't be expressed as one `format` value.
+        if let format = mediums.discogsSearchFormat {
+            items.append(URLQueryItem(name: "format", value: format))
+        }
+        return try await search(queryItems: items)
     }
 
     public func enrich(_ match: MetadataMatch) async throws -> MetadataMatch {
@@ -224,6 +235,7 @@ public struct DiscogsClient: MetadataProvider {
             styles: info.styles ?? [],
             format: formatToken(from: descriptions),
             speed: speedToken(from: descriptions),
+            mediums: mediumNames(from: info.formats),
             labels: labels,
             barcode: nil,
             discogsReleaseID: release.id,
@@ -308,6 +320,7 @@ public struct DiscogsClient: MetadataProvider {
             styles: result.style ?? [],
             format: formatToken(from: result.format),
             speed: speedToken(from: result.format),
+            mediums: mediumTokens(from: result.format),
             labels: labels,
             barcode: result.barcode?.first,
             discogsReleaseID: result.id,
@@ -325,6 +338,7 @@ public struct DiscogsClient: MetadataProvider {
             return LabelCredit(name: name, catalogNumber: label.catno)
         }
         let descriptions = (detail.formats ?? []).flatMap { $0.descriptions ?? [] }
+        let mediums = mediumNames(from: detail.formats)
         let barcode = (detail.identifiers ?? [])
             .first { ($0.type ?? "").lowercased() == "barcode" }?.value
 
@@ -340,6 +354,7 @@ public struct DiscogsClient: MetadataProvider {
             styles: detail.styles ?? fallback.styles,
             format: formatToken(from: descriptions) ?? fallback.format,
             speed: speedToken(from: descriptions) ?? fallback.speed,
+            mediums: mediums.isEmpty ? fallback.mediums : mediums,
             labels: labels.isEmpty ? fallback.labels : labels,
             barcode: barcode ?? fallback.barcode,
             discogsReleaseID: detail.id,
@@ -383,6 +398,28 @@ public struct DiscogsClient: MetadataProvider {
 
     static func speedToken(from values: [String]?) -> String? {
         values?.first { $0.range(of: "RPM", options: .caseInsensitive) != nil }
+    }
+
+    /// The medium names of a release ("Vinyl", "CD", "Cassette"), in order and
+    /// without repeats. A release object names its media explicitly, so keep
+    /// them all — even ones outside our vocabulary, which read as "unknown".
+    static func mediumNames(from formats: [DiscogsFormat]?) -> [String] {
+        var names: [String] = []
+        for name in (formats ?? []).compactMap(\.name) where !names.contains(name) {
+            names.append(name)
+        }
+        return names
+    }
+
+    /// Search results flatten the medium in with the format descriptions
+    /// (`["Vinyl", "LP", "Album"]`), so pick out only the entries we recognise
+    /// as media — "LP" and "Album" describe the pressing, not what it's made of.
+    static func mediumTokens(from values: [String]?) -> [String] {
+        var names: [String] = []
+        for value in values ?? [] where ReleaseMedium.named(value) != nil && !names.contains(value) {
+            names.append(value)
+        }
+        return names
     }
 
     static func primaryImageURL(_ images: [DiscogsImage]?) -> URL? {

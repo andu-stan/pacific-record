@@ -26,17 +26,26 @@ final class AddFlowModel {
     var draft: RecordDetail?
     var lastBarcode: String?
     var coverCandidates: [CoverCandidate] = []
+    /// True when the last search did find releases but they were all on media
+    /// the user filtered out — the "no match" alert says so instead of blaming
+    /// the release.
+    private(set) var lastSearchWasFilteredOut = false
     private var pendingMatch: MetadataMatch?
     private var pendingRecordID: String?
 
     /// Seed for the picker's gradient placeholders (the chosen release title).
     var pickerSeed: String { pendingMatch?.title ?? "" }
 
+    /// Built once per flow, so its rate limiter throttles every call the flow
+    /// makes. The flow is created fresh each time Add opens, which is also when
+    /// it picks up the current token and media selection.
     let provider: any MetadataProvider
+
     private let library: LibraryModel
     private let onFinishFlow: () -> Void
     private var lastSearch: (@Sendable () async throws -> [MetadataMatch])?
     private var lastPush = true
+    private var lastKeepAllIfEmpty = false
 
     init(library: LibraryModel, onFinish: @escaping () -> Void) {
         self.library = library
@@ -50,7 +59,8 @@ final class AddFlowModel {
         let token = UserDefaults.standard.string(forKey: "discogsToken") ?? ""
         let musicBrainz = MusicBrainzClient()
         guard !token.isEmpty else { return musicBrainz }
-        return CompositeMetadataProvider(providers: [DiscogsClient(token: token), musicBrainz])
+        let discogs = DiscogsClient(token: token, mediums: SearchMediums.current)
+        return CompositeMetadataProvider(providers: [discogs, musicBrainz])
     }
 
     // MARK: Searching
@@ -62,8 +72,10 @@ final class AddFlowModel {
         lastBarcode = trimmed
         Haptics.impact()
         let provider = provider
-        // Barcode results push to the Match screen ("pick the pressing").
-        run(push: true) { try await provider.searchByBarcode(trimmed) }
+        // Barcode results push to the Match screen ("pick the pressing"). You
+        // scanned something physical, so if the medium filter would empty the
+        // results we show them anyway rather than claiming nothing was found.
+        run(push: true, keepAllIfEmpty: true) { try await provider.searchByBarcode(trimmed) }
     }
 
     func runTextSearch(_ query: String) {
@@ -76,20 +88,29 @@ final class AddFlowModel {
     }
 
     func retry() {
-        if let search = lastSearch { run(push: lastPush, search) }
+        if let search = lastSearch { run(push: lastPush, keepAllIfEmpty: lastKeepAllIfEmpty, search) }
     }
 
     func dismissAlert() {
         phase = .idle
     }
 
-    private func run(push: Bool, _ operation: @escaping @Sendable () async throws -> [MetadataMatch]) {
+    private func run(
+        push: Bool,
+        keepAllIfEmpty: Bool = false,
+        _ operation: @escaping @Sendable () async throws -> [MetadataMatch]
+    ) {
         lastSearch = operation
         lastPush = push
+        lastKeepAllIfEmpty = keepAllIfEmpty
         phase = .searching
         Task {
             do {
-                let results = try await operation()
+                let found = try await operation()
+                let filter = SearchMediums.current
+                var results = filter.apply(to: found)
+                if results.isEmpty && keepAllIfEmpty { results = found }
+                lastSearchWasFilteredOut = results.isEmpty && !found.isEmpty
                 if results.isEmpty {
                     phase = .empty
                     Haptics.warning()

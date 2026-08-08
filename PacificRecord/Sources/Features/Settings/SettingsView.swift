@@ -14,6 +14,7 @@ struct SettingsView: View {
     @AppStorage(RecordValueService.showValueInListKey) private var showValueInList = false
     @AppStorage(WishlistModel.showStatsKey) private var showStatsTab = true
     @AppStorage(WishlistModel.showWishlistKey) private var showWishlistTab = false
+    @AppStorage(SearchMediums.storageKey) private var searchMediumsRaw = MediumFilter.default.storageValue
     @State private var showTokenEntry = false
     @State private var tokenDraft = ""
     @State private var exportFile: LibraryExporter.ExportFile?
@@ -26,6 +27,7 @@ struct SettingsView: View {
     @State private var confirmReplace = false
 
     private var isConnected: Bool { !token.isEmpty }
+    private var searchMediums: MediumFilter { MediumFilter(storageValue: searchMediumsRaw) }
 
     var body: some View {
         ScrollView {
@@ -165,6 +167,35 @@ struct SettingsView: View {
                     sourceRow(index: 2, name: token.isEmpty ? "—" : "MusicBrainz", divider: false)
                 }
             }
+
+            GroupedCard() {
+                NavigationLink {
+                    SearchMediumsView()
+                } label: {
+                    HStack(spacing: 12) {
+                        ZStack {
+                            RoundedRectangle(cornerRadius: Metrics.cardRadius, style: .continuous)
+                                .fill(Palette.accent.opacity(0.16))
+                                .frame(width: 30, height: 30)
+                            Image(systemName: "opticaldisc")
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundStyle(Palette.accent)
+                        }
+                        Text("Media").font(.prBody).foregroundStyle(Palette.label)
+                        Spacer()
+                        Text(searchMediums.summary).font(.prBody).foregroundStyle(Palette.secondary)
+                            .lineLimit(1)
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(Palette.quaternary)
+                    }
+                    .padding(.vertical, 10)
+                }
+                .buttonStyle(.plain)
+            }
+            Text("Which media searches return. Set to Vinyl, a search for a reissue won't bury the pressing you want under CDs.")
+                .font(.prSmall).foregroundStyle(Palette.tertiary)
+                .padding(.horizontal, 4)
 
             GroupedCard() {
                 HStack {

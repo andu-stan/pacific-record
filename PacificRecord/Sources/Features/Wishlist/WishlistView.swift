@@ -337,12 +337,19 @@ struct WishlistAddView: View {
         isSearching = true
         message = nil
         Task {
+            let mediums = SearchMediums.current
             let provider: any MetadataProvider = token.isEmpty
                 ? MusicBrainzClient()
-                : CompositeMetadataProvider(providers: [DiscogsClient(token: token), MusicBrainzClient()])
+                : CompositeMetadataProvider(
+                    providers: [DiscogsClient(token: token, mediums: mediums), MusicBrainzClient()])
             do {
-                matches = try await provider.searchByText(trimmed)
-                if matches.isEmpty { message = "No releases found." }
+                let found = try await provider.searchByText(trimmed)
+                matches = mediums.apply(to: found)
+                if matches.isEmpty {
+                    message = found.isEmpty
+                        ? "No releases found."
+                        : "No releases on the media you search for. Change that in Settings."
+                }
             } catch {
                 message = AddFlowModel.message(for: error)
             }
