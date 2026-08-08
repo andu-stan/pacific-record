@@ -10,6 +10,7 @@ public enum MetadataError: Error, Equatable {
     case invalidURL
     case http(status: Int)
     case noResults
+    case responseTooLarge
 }
 
 /// A monetary amount in a given ISO currency (e.g. Discogs price data).

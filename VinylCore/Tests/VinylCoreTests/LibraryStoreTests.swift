@@ -42,6 +42,30 @@ final class LibraryStoreTests: XCTestCase {
         XCTAssertEqual(try store.search("").count, 2)         // empty query = whole library
     }
 
+    /// Punctuation splits tokens rather than being deleted, so a name typed the
+    /// way it's printed on the sleeve still finds the record.
+    func testSearchHandlesPunctuatedNames() throws {
+        let store = try makeTempStore()
+        try store.save(sampleDetail(title: "Automatic For The People", artist: "R.E.M."))
+        try store.save(sampleDetail(title: "Back In Black", artist: "AC/DC"))
+
+        XCTAssertEqual(try store.search("R.E.M.").map(\.title), ["Automatic For The People"])
+        XCTAssertEqual(try store.search("AC/DC").map(\.title), ["Back In Black"])
+        XCTAssertEqual(try store.search("ac dc").map(\.title), ["Back In Black"])
+    }
+
+    /// The FTS expression is built by hand, so a quote in the query must not be
+    /// able to break out of it.
+    func testSearchSurvivesQueryPunctuation() throws {
+        let store = try makeTempStore()
+        try store.save(sampleDetail(title: "Kind of Blue", artist: "Miles Davis"))
+
+        XCTAssertNoThrow(try store.search("\" OR 1=1 --"))
+        XCTAssertNoThrow(try store.search("*"))
+        XCTAssertNoThrow(try store.search("blue\" NEAR/2 \"kind"))
+        XCTAssertEqual(try store.search("\"blue\"").map(\.title), ["Kind of Blue"])
+    }
+
     func testUpdateChangesStoredFields() throws {
         let store = try makeTempStore()
         let id = UUID().uuidString

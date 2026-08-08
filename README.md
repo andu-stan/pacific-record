@@ -30,6 +30,31 @@ can be opened and read by other applications — not locked inside the app.
 | Metadata | Discogs (primary) + MusicBrainz / Cover Art Archive (fallback) |
 | Barcode | VisionKit `DataScannerViewController` |
 | Distribution | Personal — sideload or TestFlight, user-supplied Discogs token |
+| Secrets | Discogs token in the keychain (`ThisDeviceOnly`), never in `UserDefaults` |
+
+## Handling untrusted data
+
+The library is an open file you can hand to another app — which means a library
+file can also arrive from somewhere else. A backup someone else made is treated
+as hostile input:
+
+- **The Discogs token lives in the keychain**, as a generic password with
+  `kSecAttrAccessibleWhenUnlockedThisDeviceOnly`, so it never lands in a device
+  backup. A token written by an earlier build is migrated out of the defaults
+  plist on first read and the plist entry deleted.
+- **Nothing from a file gets to shape a path.** Record ids and file extensions
+  are reduced to a single safe component (`SafeFilename.component`) before any
+  write, and a stored `cover_path` must resolve *inside* the library folder
+  (`SafeFilename.resolve`) before it's opened. Zip entries are checked the same
+  way on extraction.
+- **An archive's declared sizes are claims, not facts.** The zip reader caps
+  per-entry and total uncompressed bytes and the entry count, since it allocates
+  the declared size before inflating.
+- **HTTP responses are bounded** by an explicit timeout and a size ceiling, and
+  cover downloads by a smaller one again.
+- **Destructive restores read before they delete**: replace mode refuses a
+  backup whose staging folder has vanished or that contains no records, so it
+  can't empty the library and then restore nothing.
 
 ## Documentation
 

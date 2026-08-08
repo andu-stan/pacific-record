@@ -284,8 +284,12 @@ public final class LibraryStore: @unchecked Sendable {
     /// notes. Empty query returns the whole library. Tokens are matched as
     /// prefixes so search-as-you-type works.
     public func search(_ text: String) throws -> [Release] {
+        // Split on anything that isn't a letter or digit, mirroring how SQLite's
+        // tokenizer indexed the text. Stripping punctuation instead would turn
+        // "R.E.M." into the single token "REM", which matches nothing — the
+        // index holds "r", "e", "m".
         let tokens = text
-            .split(whereSeparator: { $0 == " " || $0.isNewline })
+            .split(whereSeparator: { !$0.isLetter && !$0.isNumber })
             .map { Self.sanitizeFTSToken(String($0)) }
             .filter { !$0.isEmpty }
         guard !tokens.isEmpty else { return try allReleases() }

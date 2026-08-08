@@ -10,7 +10,7 @@ struct SetupWizardView: View {
 
     @Environment(AppModel.self) private var app
     @Environment(LibraryModel.self) private var library
-    @AppStorage("discogsToken") private var token = ""
+    @State private var token = DiscogsTokenStore.read()
     @AppStorage(SearchMediums.storageKey) private var searchMediumsRaw = MediumFilter.default.storageValue
 
     @State private var step: Step = .welcome
@@ -262,6 +262,7 @@ struct SetupWizardView: View {
     private func applyConfiguration() {
         library.setLibraryName(name)
         token = tokenDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        DiscogsTokenStore.write(token)
         if app.iCloudAvailable, useICloud != app.prefersICloud {
             app.setPreferICloud(useICloud)
         }

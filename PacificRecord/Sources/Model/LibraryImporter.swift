@@ -44,6 +44,8 @@ enum LibraryImporter {
         case unreadableFile
         case noDatabaseInArchive
         case notALibrary
+        case backupNoLongerAvailable
+        case emptyBackup
 
         var errorDescription: String? {
             switch self {
@@ -53,6 +55,10 @@ enum LibraryImporter {
                 return "The archive doesn't contain a Pacific Record library."
             case .notALibrary:
                 return "That file isn't a Pacific Record library."
+            case .backupNoLongerAvailable:
+                return "The unpacked backup is no longer available. Pick the file again."
+            case .emptyBackup:
+                return "That backup has no records in it, so replacing would leave you with nothing."
             }
         }
     }
@@ -121,9 +127,23 @@ enum LibraryImporter {
         let coversURL = preview.coversURL
 
         return try await Task.detached(priority: .userInitiated) { () async throws -> Summary in
+            // The preview was taken earlier and its staging folder could be gone
+            // by now — the temporary directory is not ours to rely on. Opening a
+            // missing path would *create* an empty database, and in replace mode
+            // that means deleting the library and restoring nothing.
+            guard FileManager.default.fileExists(atPath: databaseURL.path) else {
+                throw ImportError.backupNoLongerAvailable
+            }
             guard let source = try? LibraryStore(path: databaseURL.path) else {
                 throw ImportError.notALibrary
             }
+
+            // Read everything the import needs *before* touching the library, so
+            // a failure part-way through can't leave it emptied.
+            let locations = (try? source.locations()) ?? []
+            let releases = (try? source.allReleases()) ?? []
+            guard !(mode == .replace && releases.isEmpty) else { throw ImportError.emptyBackup }
+
             var summary = Summary()
             summary.replaced = (mode == .replace)
 
@@ -133,13 +153,12 @@ enum LibraryImporter {
             }
 
             // Locations first: records reference them.
-            for location in (try? source.locations()) ?? [] {
+            for location in locations {
                 try? store.saveLocation(location)
                 summary.locations += 1
             }
 
             let existing = (mode == .merge) ? ((try? store.allReleaseIDs()) ?? []) : []
-            let releases = (try? source.allReleases()) ?? []
             let total = max(1, releases.count)
 
             for (index, release) in releases.enumerated() {
@@ -171,12 +190,35 @@ enum LibraryImporter {
 
     // MARK: - Internals
 
+    /// A staging folder of its own for each preview. Sharing one directory meant
+    /// previewing a second file deleted the first one's unpacked backup while a
+    /// `Preview` still pointed at it.
     private static func freshStaging() throws -> URL {
-        let staging = FileManager.default.temporaryDirectory
+        let fileManager = FileManager.default
+        let root = fileManager.temporaryDirectory
             .appendingPathComponent(stagingDirectoryName, isDirectory: true)
-        try? FileManager.default.removeItem(at: staging)
-        try FileManager.default.createDirectory(at: staging, withIntermediateDirectories: true)
+        try fileManager.createDirectory(at: root, withIntermediateDirectories: true)
+        purgeStaleStaging(in: root)
+
+        let staging = root.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try fileManager.createDirectory(at: staging, withIntermediateDirectories: true)
         return staging
+    }
+
+    /// Unpacked backups are only needed until the user commits or cancels, and
+    /// `discard` normally removes them — this catches the ones left behind when
+    /// the app was killed mid-import.
+    private static func purgeStaleStaging(in root: URL) {
+        let fileManager = FileManager.default
+        let cutoff = Date().addingTimeInterval(-24 * 60 * 60)
+        let contents = (try? fileManager.contentsOfDirectory(
+            at: root, includingPropertiesForKeys: [.contentModificationDateKey])) ?? []
+        for item in contents {
+            let modified = (try? item.resourceValues(forKeys: [.contentModificationDateKey]))?
+                .contentModificationDate
+            if let modified, modified > cutoff { continue }
+            try? fileManager.removeItem(at: item)
+        }
     }
 
     /// The archive nests everything under a dated folder, so search rather than

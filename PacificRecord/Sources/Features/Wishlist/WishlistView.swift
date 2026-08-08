@@ -5,7 +5,7 @@ import VinylCore
 struct WishlistView: View {
     @Environment(WishlistModel.self) private var wishlist
     @Environment(LibraryModel.self) private var library
-    @AppStorage("discogsToken") private var token = ""
+    @State private var token = DiscogsTokenStore.read()
 
     @State private var showAdd = false
     @State private var confirmDelete: WishlistItem?
@@ -62,6 +62,8 @@ struct WishlistView: View {
             .padding(.bottom, 32)
         }
         .background(Palette.background)
+        // The tab outlives the Settings sheet, so re-read on reappear.
+        .onAppear { token = DiscogsTokenStore.read() }
         .refreshable { await wishlist.refreshPrices() }
         .sheet(isPresented: $showAdd) {
             WishlistAddView().environment(wishlist)
@@ -238,7 +240,7 @@ struct WishlistRow: View {
 struct WishlistAddView: View {
     @Environment(WishlistModel.self) private var wishlist
     @Environment(\.dismiss) private var dismiss
-    @AppStorage("discogsToken") private var token = ""
+    @State private var token = DiscogsTokenStore.read()
 
     @State private var query = ""
     @State private var matches: [MetadataMatch] = []

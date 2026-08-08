@@ -29,7 +29,7 @@ enum RecordValueService {
     /// limiter lives on the instance, so a fresh client per record would issue
     /// unthrottled requests and get rate-limited by Discogs.
     static func makeClient() -> DiscogsClient {
-        DiscogsClient(token: UserDefaults.standard.string(forKey: "discogsToken") ?? "")
+        DiscogsClient(token: DiscogsTokenStore.read())
     }
 
     static func fetch(for release: Release) async -> Estimate? {
@@ -38,7 +38,7 @@ enum RecordValueService {
 
     static func fetch(for release: Release, using client: DiscogsClient) async -> Estimate? {
         guard let releaseID = release.discogsReleaseID else { return nil }
-        let token = UserDefaults.standard.string(forKey: "discogsToken") ?? ""
+        let token = DiscogsTokenStore.read()
         let currency = preferredCurrency
 
         if !token.isEmpty, let suggestions = try? await client.priceSuggestions(releaseID: releaseID), !suggestions.isEmpty {

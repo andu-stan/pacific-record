@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import VinylCore
 
 /// A gradient "cover" used as a placeholder until real artwork is downloaded.
 /// The seeded sample records reproduce the exact gradients from the design;
@@ -146,7 +147,12 @@ struct CoverArtView: View {
             image = hit
             return
         }
-        let url = libraryFolder.appendingPathComponent(coverPath)
+        // A stored path is data, and data can come from an imported library —
+        // refuse one that climbs out of the library folder.
+        guard let url = SafeFilename.resolve(coverPath, in: libraryFolder) else {
+            image = nil
+            return
+        }
         image = await CoverImageLoader.shared.image(at: url, path: coverPath, maxPixel: maxPixel)
     }
 }

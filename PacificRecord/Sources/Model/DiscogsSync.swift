@@ -22,7 +22,7 @@ enum DiscogsCollectionSync {
     }
 
     private static var token: String {
-        UserDefaults.standard.string(forKey: "discogsToken") ?? ""
+        DiscogsTokenStore.read()
     }
 
     /// Pushes one record to the user's Discogs collection. Best-effort: resolves

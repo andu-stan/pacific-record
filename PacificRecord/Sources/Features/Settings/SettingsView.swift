@@ -6,7 +6,8 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(AppModel.self) private var app
     @Environment(LibraryModel.self) private var library
-    @AppStorage("discogsToken") private var token = ""
+    /// Read once into view state; the token itself lives in the keychain.
+    @State private var token = DiscogsTokenStore.read()
     @AppStorage(CoverSource.storageKey) private var coverSourceRaw = CoverSource.appleMusic.rawValue
     @AppStorage(CoverArtResolver.pickCoverOnImportKey) private var pickCoverOnImport = false
     @AppStorage(DiscogsCollectionSync.autoSyncKey) private var syncToDiscogs = false
@@ -50,7 +51,12 @@ struct SettingsView: View {
         }
         .alert("Discogs API token", isPresented: $showTokenEntry) {
             TextField("Paste token", text: $tokenDraft)
-            Button("Save") { token = tokenDraft.trimmingCharacters(in: .whitespaces); tokenDraft = "" }
+            Button("Save") {
+                let value = tokenDraft.trimmingCharacters(in: .whitespaces)
+                DiscogsTokenStore.write(value)
+                token = value
+                tokenDraft = ""
+            }
             Button("Cancel", role: .cancel) { tokenDraft = "" }
         } message: {
             Text("Create a personal access token at discogs.com/settings/developers.")

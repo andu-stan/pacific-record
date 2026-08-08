@@ -47,9 +47,11 @@ enum WidgetSnapshotWriter {
             var widgetRecords: [WidgetRecord] = []
             for record in flattened {
                 var coverFile: String?
-                if let coverPath = record.coverPath {
-                    let source = libraryFolder.appendingPathComponent(coverPath)
-                    let name = "\(record.id).jpg"
+                // Both sides are library data: the stored path must stay inside
+                // the library folder, and the id must not shape a file name.
+                if let coverPath = record.coverPath,
+                   let source = SafeFilename.resolve(coverPath, in: libraryFolder) {
+                    let name = "\(SafeFilename.component(record.id)).jpg"
                     if writeDownsampledCover(from: source, to: coversURL.appendingPathComponent(name)) {
                         coverFile = name
                     }

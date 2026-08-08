@@ -133,7 +133,7 @@ enum CoverArtResolver {
     /// there's no release id to expand.
     private static func discogsCandidates(releaseID: Int?, fallback: URL?) async -> [CoverCandidate] {
         if let releaseID {
-            let token = UserDefaults.standard.string(forKey: "discogsToken") ?? ""
+            let token = DiscogsTokenStore.read()
             if let images = try? await DiscogsClient(token: token).images(releaseID: releaseID), !images.isEmpty {
                 return images.map {
                     CoverCandidate(source: .discogs, url: $0.full, thumbURL: $0.thumbnail)

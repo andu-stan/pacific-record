@@ -63,7 +63,7 @@ final class AddFlowModel {
     /// MusicBrainz otherwise. The Discogs client comes back either way so
     /// pressing details still work on a token-less install.
     private static func makeProvider() -> (provider: any MetadataProvider, discogs: DiscogsClient) {
-        let token = UserDefaults.standard.string(forKey: "discogsToken") ?? ""
+        let token = DiscogsTokenStore.read()
         let discogs = DiscogsClient(token: token, mediums: SearchMediums.current)
         let musicBrainz = MusicBrainzClient()
         guard !token.isEmpty else { return (musicBrainz, discogs) }
@@ -322,6 +322,8 @@ final class AddFlowModel {
                 return "Couldn't build the lookup request."
             case .noResults:
                 return "No results were returned."
+            case .responseTooLarge:
+                return "The lookup service sent back far more data than expected."
             }
         }
         return (error as NSError).localizedDescription

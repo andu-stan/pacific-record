@@ -1,5 +1,6 @@
 import Compression
 import Foundation
+import VinylCore
 
 /// A minimal, read-only ZIP extractor.
 ///
@@ -13,15 +14,26 @@ enum ZipReader {
         case notAZipArchive
         case unsupportedCompression(UInt16)
         case corruptArchive
+        case archiveTooLarge
 
         var errorDescription: String? {
             switch self {
             case .notAZipArchive: return "That file isn't a zip archive."
             case .unsupportedCompression: return "The archive uses an unsupported compression method."
             case .corruptArchive: return "The archive is damaged and couldn't be read."
+            case .archiveTooLarge: return "That archive is far larger than a library backup should be."
             }
         }
     }
+
+    /// Ceilings for an archive the app didn't create. A zip header is free to
+    /// *claim* gigabytes in a few bytes, and this reader allocates the declared
+    /// size before inflating — so a crafted file could exhaust memory and take
+    /// the app down. Refuse rather than try; a real library backup is nowhere
+    /// near these numbers.
+    private static let maxEntryBytes = 512 * 1024 * 1024
+    private static let maxTotalBytes = 2 * 1024 * 1024 * 1024
+    private static let maxEntryCount = 50_000
 
     /// Extracts every file into `destination`, recreating the directory
     /// structure. Returns the relative paths written.
@@ -32,13 +44,21 @@ enum ZipReader {
         let directory = try centralDirectory(in: data)
 
         var written: [String] = []
+        var totalBytes = 0
         for entry in directory {
             // Refuse absolute paths and traversal — never write outside the box.
             let components = entry.path.split(separator: "/").map(String.init)
             guard !entry.path.hasPrefix("/"), !components.contains("..") else { continue }
             guard !entry.path.hasSuffix("/") else { continue }   // directory record
 
+            totalBytes += max(entry.uncompressedSize, 0)
+            guard totalBytes <= maxTotalBytes else { throw ZipError.archiveTooLarge }
+
             let fileURL = components.reduce(destination) { $0.appendingPathComponent($1) }
+            // Belt and braces: the component filter above should make this
+            // impossible, but the check is cheap and the failure mode isn't.
+            guard SafeFilename.isContained(fileURL, in: destination) else { continue }
+
             try FileManager.default.createDirectory(
                 at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
             try contents(of: entry, in: data).write(to: fileURL)
@@ -74,6 +94,7 @@ enum ZipReader {
         guard eocd >= 0 else { throw ZipError.notAZipArchive }
 
         let entryCount = Int(readUInt16(data, eocd + 10))
+        guard entryCount <= maxEntryCount else { throw ZipError.archiveTooLarge }
         var offset = Int(readUInt32(data, eocd + 16))
 
         var entries: [Entry] = []
@@ -126,6 +147,9 @@ enum ZipReader {
     /// ZIP method 8 is raw DEFLATE, which is what `COMPRESSION_ZLIB` decodes.
     private static func inflate(_ source: Data, uncompressedSize: Int) throws -> Data {
         guard uncompressedSize > 0 else { return Data() }
+        // The size is the archive's claim, and this is where it turns into an
+        // allocation — check before believing it.
+        guard uncompressedSize <= maxEntryBytes else { throw ZipError.archiveTooLarge }
         var output = Data(count: uncompressedSize)
         let written = output.withUnsafeMutableBytes { destination -> Int in
             source.withUnsafeBytes { input -> Int in

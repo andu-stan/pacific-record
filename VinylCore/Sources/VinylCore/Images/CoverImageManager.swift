@@ -9,6 +9,14 @@ import UniformTypeIdentifiers
 /// relative to the library folder so they can be stored in the database and
 /// resolved by any app that opens the library.
 public struct CoverImageManager {
+    /// A cover that won't fit in a record sleeve won't fit here either. Remote
+    /// art is untrusted input; refuse an implausible one rather than buffer it.
+    public static let maxCoverBytes = 24 * 1024 * 1024
+
+    public enum CoverError: Error, Equatable {
+        case tooLarge(bytes: Int)
+    }
+
     private let http: HTTPClient
     private let fileManager: FileManager
     private let thumbnailMaxPixel: Int
@@ -32,20 +40,25 @@ public struct CoverImageManager {
         into libraryFolder: URL
     ) async throws -> (coverPath: String, thumbPath: String?) {
         let data = try await http.data(from: url, headers: [:])
+        guard data.count <= Self.maxCoverBytes else { throw CoverError.tooLarge(bytes: data.count) }
 
         let coversDirectory = libraryFolder.appendingPathComponent("Covers", isDirectory: true)
         try fileManager.createDirectory(at: coversDirectory, withIntermediateDirectories: true)
 
-        let ext = url.pathExtension.isEmpty ? "jpg" : url.pathExtension
-        let coverFile = coversDirectory.appendingPathComponent("\(releaseID).\(ext)")
+        // The id can come from an imported library and the extension from a
+        // remote URL — neither is ours, so neither gets to shape a path.
+        let name = SafeFilename.component(releaseID, fallback: UUID().uuidString)
+        let ext = SafeFilename.fileExtension(url.pathExtension, fallback: "jpg")
+
+        let coverFile = coversDirectory.appendingPathComponent("\(name).\(ext)")
         try data.write(to: coverFile)
-        let coverPath = "Covers/\(releaseID).\(ext)"
+        let coverPath = "Covers/\(name).\(ext)"
 
         var thumbPath: String?
         if let thumbnailData = Self.downsampledJPEG(from: data, maxPixel: thumbnailMaxPixel) {
-            let thumbFile = coversDirectory.appendingPathComponent("\(releaseID)_thumb.jpg")
+            let thumbFile = coversDirectory.appendingPathComponent("\(name)_thumb.jpg")
             try thumbnailData.write(to: thumbFile)
-            thumbPath = "Covers/\(releaseID)_thumb.jpg"
+            thumbPath = "Covers/\(name)_thumb.jpg"
         }
 
         return (coverPath, thumbPath)

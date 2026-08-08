@@ -148,7 +148,7 @@ final class DiscogsCollectionImporter {
 struct DiscogsImportView: View {
     @Environment(LibraryModel.self) private var model
     @Environment(\.dismiss) private var dismiss
-    @AppStorage("discogsToken") private var token = ""
+    @State private var token = DiscogsTokenStore.read()
     @State private var importer: DiscogsCollectionImporter?
 
     private var running: Bool { importer?.isRunning ?? false }
