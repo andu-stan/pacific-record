@@ -33,10 +33,13 @@ struct RootView: View {
                     .environment(\.libraryFolderURL, library.libraryFolder)
                     .onAppear { if !didOnboard { showOnboarding = true } }
                     .fullScreenCover(isPresented: $showOnboarding) {
-                        OnboardingView {
+                        SetupWizardView {
                             didOnboard = true
                             showOnboarding = false
                         }
+                        .environment(library)
+                        .environment(app)
+                        .environment(\.libraryFolderURL, library.libraryFolder)
                     }
             }
         }
