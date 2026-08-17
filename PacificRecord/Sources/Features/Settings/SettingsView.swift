@@ -487,6 +487,20 @@ struct SettingsView: View {
         )
     }
 
+    /// Says which iCloud account the library belongs to when it isn't the one
+    /// signed in — otherwise a switched or signed-out account just looks like a
+    /// library that lost its records.
+    private var accountNotice: String? {
+        switch app.accountState {
+        case .signedOut:
+            return "Your library was saved under an iCloud account this iPhone is signed out of. Sign back in to reach it."
+        case .changed:
+            return "This iPhone is signed into a different iCloud account than the one your library was saved under."
+        case .same, .unknown:
+            return nil
+        }
+    }
+
     private var storageSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             SectionCaption(text: "Storage")
@@ -522,7 +536,12 @@ struct SettingsView: View {
                                 .disabled(!app.iCloudAvailable || app.switchingStorage)
                         }
                         .padding(.top, 10)
-                        if !app.iCloudAvailable {
+                        if let account = accountNotice {
+                            Text(account)
+                                .font(.prSmall).foregroundStyle(Palette.badgeAmberText)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.top, 8)
+                        } else if !app.iCloudAvailable {
                             Text("Sign in to iCloud and turn on iCloud Drive to sync across devices.")
                                 .font(.prSmall).foregroundStyle(Palette.tertiary)
                                 .frame(maxWidth: .infinity, alignment: .leading)

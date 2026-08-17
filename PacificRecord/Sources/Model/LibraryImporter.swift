@@ -123,10 +123,44 @@ enum LibraryImporter {
         libraryFolder: URL,
         progress: @escaping @Sendable (Double) -> Void
     ) async throws -> Summary {
-        let databaseURL = preview.databaseURL
-        let coversURL = preview.coversURL
+        try await copyIn(
+            databaseURL: preview.databaseURL,
+            coversURL: preview.coversURL,
+            mode: mode,
+            into: store,
+            libraryFolder: libraryFolder,
+            progress: progress)
+    }
 
-        return try await Task.detached(priority: .userInitiated) { () async throws -> Summary in
+    /// Merges one library file into another, with no picked file and no staging
+    /// directory involved — the storage-conflict path, where both libraries are
+    /// already sitting in their own folders.
+    @discardableResult
+    static func mergeLibrary(
+        at databaseURL: URL,
+        covers: URL?,
+        into store: LibraryStore,
+        libraryFolder: URL,
+        progress: @escaping @Sendable (Double) -> Void = { _ in }
+    ) async throws -> Summary {
+        try await copyIn(
+            databaseURL: databaseURL,
+            coversURL: covers,
+            mode: .merge,
+            into: store,
+            libraryFolder: libraryFolder,
+            progress: progress)
+    }
+
+    private static func copyIn(
+        databaseURL: URL,
+        coversURL: URL?,
+        mode: Mode,
+        into store: LibraryStore,
+        libraryFolder: URL,
+        progress: @escaping @Sendable (Double) -> Void
+    ) async throws -> Summary {
+        try await Task.detached(priority: .userInitiated) { () async throws -> Summary in
             // The preview was taken earlier and its staging folder could be gone
             // by now — the temporary directory is not ours to rely on. Opening a
             // missing path would *create* an empty database, and in replace mode

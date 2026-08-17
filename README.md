@@ -80,21 +80,52 @@ open PacificRecord.xcodeproj
 
 To build/verify just the core from the command line: `cd VinylCore && swift test`.
 
-### iCloud (currently disabled)
+### iCloud
 
-iCloud Drive storage is **off by default** so the app builds and runs on a
-**free** Apple ID: `AppConfig.iCloudEnabled = false`, and the entitlement and
-container declaration are commented out (`project.yml`, `Info.plist`). The app
-runs entirely on-device.
+iCloud Drive storage is **on** (`AppConfig.iCloudEnabled = true`), which means
+the build needs a **paid Apple Developer** team: the entitlements request a real
+container and free provisioning can't create one. Set `iCloudEnabled = false` to
+fall back to purely local storage without losing anything.
 
-To enable it once you have a **paid Apple Developer** team:
+The container (`iCloud.ro.sofistic.pacificrecord`) and App Group
+(`group.ro.sofistic.pacificrecord`) must exist in the developer portal and match
+the entitlements exactly — `StorageLocator.containerIdentifier` hardcodes the
+first one.
 
-1. Set `AppConfig.iCloudEnabled = true` (`PacificRecord/Sources/App/AppConfig.swift`).
-2. Uncomment `CODE_SIGN_ENTITLEMENTS` in `project.yml`.
-3. Uncomment `NSUbiquitousContainers` in `PacificRecord/Info.plist`.
-4. Run `xcodegen generate`, then select your Team under Signing & Capabilities
-   (rename the bundle id + `iCloud.…` container id to your own if needed — they
-   must match).
+#### Deciding where the library lives
+
+`StorageLocator.resolve` runs at launch and on every storage switch. Two things
+it will not do, both of which it used to:
+
+- **Treat an undownloaded iCloud file as "no library there."** An iCloud file
+  that hasn't synced yet is invisible to `FileManager.fileExists` — the real name
+  isn't on disk, only a hidden `.Library.sqlite.icloud` placeholder is. Reading
+  that as "empty" is how a local database gets copied over a full cloud one.
+  `LibraryPresence` distinguishes *absent* from *not downloaded yet*, and the
+  cloud side is settled before anything is compared with it.
+- **Open a database path that has a placeholder behind it.** SQLite would create
+  an empty file there and iCloud would end up with two versions of the same
+  library. If the download hasn't landed within 15 seconds the app says so and
+  offers to wait or to work locally, rather than inventing a library.
+
+When both sides hold a library and neither has been superseded, the app **asks**
+rather than picking: keep iCloud's, keep this iPhone's, or merge (which only
+adds — a record present on both keeps its iCloud version). Whichever loses is
+renamed to `Superseded <date>.sqlite` in place, never deleted, which also stops
+it being mistaken for a rival library on the next launch.
+
+Turning iCloud off copies the cloud library down first if this device hasn't got
+one. Note that toggling iCloud off and then on again will ask which library to
+keep — once both sides have a real database the app genuinely can't know whether
+records were added while it was off, and asking is the safe answer.
+
+#### Account changes
+
+The app records a hash of `ubiquityIdentityToken` alongside the library, so
+signing out and signing into a *different* Apple Account can be told apart —
+both otherwise look identical to the user: a library that lost all its records.
+Either one falls back to local storage and explains itself, at launch and in
+Settings › Storage.
 
 ## Status
 
